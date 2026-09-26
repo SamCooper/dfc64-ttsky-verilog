@@ -1,9 +1,9 @@
 # Tiny Tapeout project information
 project:
-  title:        ""      # Project title
-  author:       ""      # Your name
+  title:        "DFC64: DIY Fabricated Computer 64"      # Project title
+  author:       "Sam Cooper"      # Your name
   discord:      ""      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  ""      # One line description of what your project does
+  description:  "6502-compatible 8-bit CPU with a time-multiplexed 16-bit address / 8-bit data bus"      # One line description of what your project does
   language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
   clock_hz:     0       # Clock frequency in Hz (or 0 if not applicable)
 
@@ -11,7 +11,7 @@ project:
   tiles: "1x1"          # Valid values: 1x1, 1x2, 2x2, 3x2, 4x2, 6x2 or 8x2
 
   # Your top module name must start with "tt_um_". Make it unique by including your github username:
-  top_module:  "tt_um_example"
+  top_module:  "tt_um_samcooper_dfc64"
 
   # List your project's source files here.
   # Source files must be in ./src and you must list each source file separately, one per line.
@@ -23,9 +23,9 @@ project:
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
 pinout:
   # Inputs
-  ui[0]: ""
-  ui[1]: ""
-  ui[2]: ""
+  ui[0]: "IRQ_n"
+  ui[1]: "NMI_n"
+  ui[2]: "RDY (halt)"
   ui[3]: ""
   ui[4]: ""
   ui[5]: ""
@@ -33,24 +33,24 @@ pinout:
   ui[7]: ""
 
   # Outputs
-  uo[0]: ""
-  uo[1]: ""
-  uo[2]: ""
-  uo[3]: ""
-  uo[4]: ""
-  uo[5]: ""
-  uo[6]: ""
-  uo[7]: ""
+  uo[0]: "ALE_L"
+  uo[1]: "ALE_H"
+  uo[2]: "MEM_WE_n"
+  uo[3]: "MEM_OE_n"
+  uo[4]: "IO_CS0_n"
+  uo[5]: "IO_CS1_n"
+  uo[6]: "IO_CS2_n"
+  uo[7]: "IO_CS3_n"
 
   # Bidirectional pins
-  uio[0]: ""
-  uio[1]: ""
-  uio[2]: ""
-  uio[3]: ""
-  uio[4]: ""
-  uio[5]: ""
-  uio[6]: ""
-  uio[7]: ""
+  uio[0]: "AD0 (A0 / A8 / D0)"
+  uio[1]: "AD1 (A1 / A9 / D1)"
+  uio[2]: "AD2 (A2 / A10 / D2)"
+  uio[3]: "AD3 (A3 / A11 / D3)"
+  uio[4]: "AD4 (A4 / A12 / D4)"
+  uio[5]: "AD5 (A5 / A13 / D5)"
+  uio[6]: "AD6 (A6 / A14 / D6)"
+  uio[7]: "AD7 (A7 / A15 / D7)"
 
 # Do not change!
 yaml_version: 6

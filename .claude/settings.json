@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(source env.sh:*)",
+      "Bash(make -C test:*)",
+      "Bash(verilator --lint-only:*)"
+    ]
+  }
+}
