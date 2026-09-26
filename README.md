@@ -66,27 +66,24 @@ The ASIC interfaces with external memory through a shared 8-bit bidirectional bu
 
 ## Verification and Testing Strategy
 
-Relying solely on behavioral simulation leaves the project vulnerable to physical timing failures. The verification pipeline orchestrated by Claude Code will progress through five escalating stages of strictness.
+Relying solely on behavioral simulation leaves the project vulnerable to physical timing failures. The verification pipeline orchestrated by Claude Code will progress through six escalating steps of strictness.
 
-*   **1. Behavioral Mocking and Simulation (Cocotb & Python)**
+*   **Step 1. Behavioral Mocking and Simulation (Cocotb & Python)**
     *   *Approach:* Claude Code will generate asynchronous Python coroutines simulating the external 74HC573 latches, the 74HC138 decoder, and the physical SRAM/ROM/IO chips.
     *   *Goal:* Verify the logical timing of the multiplexed bus FSM and ensure the ASIC correctly executes multi-cycle read/write transactions against the mocked memory map.
-*   **1. Bus & I/O Mocking (Cocotb & Python)**
-    *   *Approach:* Claude Code generates asynchronous Python coroutines simulating the external 74HC573 latches, the 74HC138 decoder, and the physical SRAM/ROM/IO chips.
-    *   *Goal:* Verify the logical timing of the multiplexed bus FSM and ensure multi-cycle read/write transactions execute cleanly against the mocked memory map.
-*   **2. ISA Compliance Testing (Software-in-the-Loop)**
+*   **Step 2. ISA Compliance Testing (Software-in-the-Loop)**
     *   *Approach:* Small 6502 assembly files are written for every opcode and addressing mode. These are compiled via `vasm`, loaded into the Cocotb Python ROM mock at `0xC000`, and executed by the simulated Verilog ASIC.
     *   *Goal:* Assert that the CPU's internal registers, ALU operations, and final memory writes match the exact expected behavior of a real 6502 processor executing the same code.
-*   **3. Static Linting (Verilator)**
+*   **Step 3. Static Linting (Verilator)**
     *   *Approach:* The Verilog exported from *Digital* is processed via Verilator (`--lint-only`).
     *   *Goal:* Catch floating nets, width mismatches, and accidentally inferred latches.
-*   **4. Formal Verification (SymbiYosys)**
+*   **Step 4. Formal Verification (SymbiYosys)**
     *   *Approach:* Claude Code generates SystemVerilog assertions defining the absolute rules of the multiplexed bus.
     *   *Goal:* Use mathematical solvers to definitively prove the FSM cannot enter a deadlock or illegal state, regardless of external inputs.
-*   **5. Gate-Level Simulation (GLS)**
+*   **Step 5. Gate-Level Simulation (GLS)**
     *   *Approach:* Re-running the original Cocotb BDD suite against the OpenLane-synthesized netlist and SDF (Standard Delay Format) file.
     *   *Goal:* Prove that the microscopic propagation delays of the physical standard cells do not violate the required setup and hold times of the memory bus.
-*   **6. Hardware Prototyping (iCE40 FPGA)**
+*   **Step 6. Hardware Prototyping (iCE40 FPGA)**
     *   *Approach:* Synthesizing the *Digital*-exported Verilog through Project IceStorm and flashing it to a Lattice iCE40 FPGA.
     *   *Goal:* Interface the physical FPGA with a breadboard containing the actual 74HC573 latches and SRAM to validate real-world electrical timing before ASIC fabrication.
 
@@ -94,14 +91,14 @@ Relying solely on behavioral simulation leaves the project vulnerable to physica
 
 ## Implementation and Submission Roadmap
 
-| Phase       | Milestone                        | Execution Steps                                                                                                                                                                                                                                                                                                        |
-|:------------|:---------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Phase 1** | **Environment & Infrastructure** | 1. Fork the official `TinyTapeout/ttsky-verilog-template` (Sky130 shuttle) GitHub repository.<br>2. Install OSS CAD Suite (Yosys, nextpnr, Verilator) and H. Neemann's *Digital*.<br>3. Configure Claude Code (`CLAUDE.md`) to output Cocotb Python test scripts directly to the project's `test/` directory.                                                          |
-| **Phase 2** | **Scope Exploration**            | 1. Generate a markdown document that details all Opcodes for a 6502, including the various addressing modes, <br> 2. Create a ToDo list and ordering of OpCodes and modes to implement through discussion with the user<br> 3. Setup a toolchain to take 6502 ASM files and be able to compile them into 6502 machine code for later verification tests |
-| **Phase 3** | **Bus Test Generation (TDD)** | 1. Prompt Claude Code to generate the Python mock objects for the latches and SRAM.<br>2. Generate the BDD Given/When/Then test suite checking address latching and data transfer.<br>3. Verify the test suite fails. |
-| **Phase 4** | **ISA Test Campaign Setup** | 1. Write atomic `.asm` files for targeted 6502 opcodes (e.g., `LDA`, `STA`, `ADC`).<br>2. Write a Python Cocotb script that compiles the `.asm`, loads the binary into the ROM mock, pulses the reset vector, and asserts the final RAM state.<br>3. Verify these higher-level tests fail. |
-| **Phase 5** | **Logic Design** | 1. Open *Digital* and build the hierarchical FSM and 6502 subset ALU/Registers.<br>2. Export the design as a Verilog module.<br>3. Instantiate the exported Verilog inside the `tt_um_template.v` top-level file. |
-| **Phase 6** | **Simulation & Hardening** | 1. Run the Cocotb BDD suite (both Bus tests and ISA Assembly tests) against the exported Verilog.<br>2. Generate VCD files and inspect failing transitions in GTKWave.<br>3. Iterate the *Digital* schematic until all ISA compliance tests pass.<br>4. Run SymbiYosys formal proofs to guarantee FSM stability. |
-| **Phase 7** | **Physical Prototyping** | 1. Write the `pins.pcf` mapping file for the iCE40 FPGA board.<br>2. Breadboard the 74HC573 latches, 74HC138 decoder, and memory chips.<br>3. Flash the FPGA via `iceprog` and run physical logic analyzer tests on the memory bus. |
-| **Phase 8** | **ASIC Compilation** | 1. Push the final *Digital*-exported Verilog to the GitHub repository.<br>2. Monitor the automated OpenLane GitHub Action as it performs Logic Synthesis, Floorplanning, and Routing.<br>3. Verify Area and Gate Count limits. |
-| **Phase 9** | **Tapeout Submission** | 1. Review the automated Gate-Level Simulation (GLS) logs to ensure no timing violations occurred during layout.<br>2. Navigate to the Tiny Tapeout portal and paste the GitHub repository URL.<br>3. Finalize pin descriptions, select the target shuttle run, and complete checkout. |
+| Phase       | Milestone                        | Execution Steps                                                                                                                                                                                                                                                                                                        | State |
+|:------------|:---------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----|
+| **Phase 1** | **Environment & Infrastructure** | 1. Fork the official `TinyTapeout/ttsky-verilog-template` (Sky130 shuttle) GitHub repository.<br>2. Install OSS CAD Suite (Yosys, nextpnr, Verilator) and H. Neemann's *Digital*.<br>3. Configure Claude Code (`CLAUDE.md`) to output Cocotb Python test scripts directly to the project's `test/` directory.                                                          | Complete |
+| **Phase 2** | **Scope Exploration**            | 1. Generate a markdown document that details all Opcodes for a 6502, including the various addressing modes, <br> 2. Create a ToDo list and ordering of OpCodes and modes to implement through discussion with the user<br> 3. Setup a toolchain to take 6502 ASM files and be able to compile them into 6502 machine code for later verification tests | Complete |
+| **Phase 3** | **Bus Test Generation (TDD)** | 1. Prompt Claude Code to generate the Python mock objects for the latches and SRAM.<br>2. Generate the BDD Given/When/Then test suite checking address latching and data transfer.<br>3. Verify the test suite fails. | Complete |
+| **Phase 4** | **ISA Test Campaign Setup** | 1. Write atomic `.asm` files for targeted 6502 opcodes (e.g., `LDA`, `STA`, `ADC`).<br>2. Write a Python Cocotb script that compiles the `.asm`, loads the binary into the ROM mock, pulses the reset vector, and asserts the final RAM state.<br>3. Verify these higher-level tests fail. | |
+| **Phase 5** | **Logic Design** | 1. Open *Digital* and build the hierarchical FSM and 6502 subset ALU/Registers.<br>2. Export the design as a Verilog module.<br>3. Instantiate the exported Verilog inside the `tt_um_template.v` top-level file. | |
+| **Phase 6** | **Simulation & Hardening** | 1. Run the Cocotb BDD suite (both Bus tests and ISA Assembly tests) against the exported Verilog.<br>2. Generate VCD files and inspect failing transitions in GTKWave.<br>3. Iterate the *Digital* schematic until all ISA compliance tests pass.<br>4. Run SymbiYosys formal proofs to guarantee FSM stability. | |
+| **Phase 7** | **Physical Prototyping** | 1. Write the `pins.pcf` mapping file for the iCE40 FPGA board.<br>2. Breadboard the 74HC573 latches, 74HC138 decoder, and memory chips.<br>3. Flash the FPGA via `iceprog` and run physical logic analyzer tests on the memory bus. | |
+| **Phase 8** | **ASIC Compilation** | 1. Push the final *Digital*-exported Verilog to the GitHub repository.<br>2. Monitor the automated OpenLane GitHub Action as it performs Logic Synthesis, Floorplanning, and Routing.<br>3. Verify Area and Gate Count limits. | |
+| **Phase 9** | **Tapeout Submission** | 1. Review the automated Gate-Level Simulation (GLS) logs to ensure no timing violations occurred during layout.<br>2. Navigate to the Tiny Tapeout portal and paste the GitHub repository URL.<br>3. Finalize pin descriptions, select the target shuttle run, and complete checkout. | |
