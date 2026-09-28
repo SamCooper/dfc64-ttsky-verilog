@@ -17,13 +17,14 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, Edge, SimTimeoutError, with_timeout
 
-from mocks.latch_573 import Latch573
+from mocks.latch_573 import Latch
 from mocks.sram import SRAM
 
 ALE_L = 0
 ALE_H = 1
-MEM_WE_N = 2
-MEM_OE_N = 3
+ALE_I = 2
+MEM_WE_N = 3
+MEM_OE_N = 4
 
 RESET_VECTOR = 0xFFFC
 
@@ -41,8 +42,8 @@ async def _boot(dut):
 
 def _wire_bus(dut):
     """Given: instantiate the off-chip latches + SRAM, wired to the DUT's pins."""
-    low_latch = Latch573(dut.uo_out, ALE_L, dut.uio_out)
-    high_latch = Latch573(dut.uo_out, ALE_H, dut.uio_out)
+    low_latch = Latch(dut.uo_out, ALE_L, dut.uio_out)
+    high_latch = Latch(dut.uo_out, ALE_H, dut.uio_out)
     sram = SRAM(
         low_latch,
         high_latch,

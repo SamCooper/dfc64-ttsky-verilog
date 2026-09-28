@@ -16,7 +16,7 @@ import cocotb
 from cocotb.triggers import Edge, First, ReadOnly
 
 
-class Latch573:
+class Latch:
     def __init__(self, control_signal, le_bit, data_signal):
         self._control = control_signal
         self._le_bit = le_bit

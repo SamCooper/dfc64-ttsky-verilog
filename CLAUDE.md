@@ -15,7 +15,7 @@ architecture: pin map, time-multiplexed bus (ALE_L → ALE_H → data on `uio[7:
 
 ## Test layout
 - `test/` – cocotb test modules (`test_*.py`), registered in `test/Makefile`.
-- `test/mocks/` – async Python models of the off-chip parts: 74HC573 latches, 74HC138 decoder, SRAM/ROM/IO.
+- `test/mocks/` – async Python models of the off-chip parts: custom latches, 74HC138 decoder, SRAM/ROM/IO.
 - `test/features/` – Given/When/Then feature descriptions (pytest-bdd style) the tests implement.
 - Tests must drive/observe only the real TT pins (`ui_in`, `uo_out`, `uio_in`, `uio_out`, `uio_oe`,
   `clk`, `rst_n`, `ena`) – never internal signals – so the same suite runs against the gate-level netlist.

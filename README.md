@@ -18,7 +18,9 @@ The CPU uses the IO pins of the Tiny Tapeout footprint as follows:
 *   **Test-Driven Development (Claude Code):** Development will follow a strict BDD (Behavior-Driven Development) methodology. Claude Code will act as an automated test engineer, generating Python-based hardware mocks and test vectors based on plain-language specifications before the hardware is drawn.
 *   **Assembly Verification (vasm6502):** To verify the 6502 instruction set, standard assembly files will be compiled using `vasm`. The resulting binaries will be injected into the simulated ROM to verify full software execution against the hardware.
 *   **I/O Strategy (Time-Multiplexed Bus):** Because Tiny Tapeout provides limited I/O (8 bidirectional, 8 inputs, 8 outputs), the ASIC will output a multiplexed 16-bit address over two clock cycles using the bidirectional pins.
-*   **External PCB Decoding:** The multiplexed signals will be captured by external 74HC573 latches. A 74HC138 3-to-8 line decoder on the PCB will manage the physical memory map, dividing the 64KB space into discrete blocks for System RAM, Video RAM (framebuffer), I/O peripherals, and ROM.
+*   **External PCB Decoding:** 
+    * The multiplexed signals will be captured by two external 8-bit latches. It is TBD on how this will be built currently as it will use an enhancement that allows the stored 16-bit address to increment in a single cycle.
+    * A 74HC138 3-to-8 line decoder on the PCB will manage the physical memory map, dividing the 64KB space into discrete blocks for System RAM, Video RAM (framebuffer), I/O peripherals, and ROM.
 ---
 
 ## Memory Architecture and Physical Layout
@@ -38,19 +40,25 @@ The 64KB address space is divided into eight discrete 8KB chunks using a 74HC138
 
 ### Physical Setup and PCB Routing
 
-The ASIC interfaces with external memory through a shared 8-bit bidirectional bus and four dedicated control lines. The physical PCB requires four primary support logic chips alongside the actual RAM/ROM chips.
+The ASIC interfaces with external memory through a shared 8-bit bidirectional bus and dedicated control lines. The physical PCB requires some primary support logic chips alongside the actual RAM/ROM chips.
 
 **ASIC Pin Assignments**
-*   **Bidirectional (`uio[7:0]`):** The time-multiplexed bus. Sequentially pushes the lower address, upper address, and finally reads/writes data.
-*   **Outputs (`uo_out[3:0]`):** Dedicated bus control signals: `ALE_L`, `ALE_H`, `MEM_WE`, `MEM_OE`.
-*   **Outputs (`uo_out[7:4]`):** Optional internal chip selects for fine-grained I/O decoding (e.g., UART `CS_n`).
+*   **Bidirectional (`uio[7:0]`):** The time-multiplexed bus. Sequentially pushes the lower address, upper address, and finally reads/writes data. An enhancement exists where the addresses being read/written are sequential and therefore the address in the latch can be incremented in a single cycle rather than needing to be completely overwritten.
+
+*   **Outputs (`uo_out[4:0]`):** Dedicated bus control signals:
+    * `ALE_L`: Address latch enable low byte
+    * `ALE_H`: Address latch enable hi byte
+    * `ALE_I`: Address latch enable increment
+    * `MEM_WE`: Memory write enable
+    * `MEM_OE`: Memory read enable
+*   **Outputs (`uo_out[7:5]`):** Optional internal chip selects for fine-grained I/O decoding (e.g., UART `CS_n`).
 
 **External Support ICs**
-1.  **Lower Address Latch (74HC573):**
+1.  **Lower Address Latch:**
     *   *Inputs:* Wired to the ASIC's `uio[7:0]` bus.
     *   *Control:* Triggered by the ASIC's `ALE_L` pin.
     *   *Outputs:* Drives the physical `A0-A7` address lines across the PCB.
-2.  **Upper Address Latch (74HC573):**
+2.  **Upper Address Latch:**
     *   *Inputs:* Wired to the ASIC's `uio[7:0]` bus.
     *   *Control:* Triggered by the ASIC's `ALE_H` pin.
     *   *Outputs:* Drives the physical `A8-A15` address lines across the PCB.
@@ -58,7 +66,7 @@ The ASIC interfaces with external memory through a shared 8-bit bidirectional bu
     *   *Inputs:* Reads `A13`, `A14`, and `A15` directly from the outputs of the Upper Address Latch.
     *   *Outputs:* Asserts one of eight active-low `Y` pins depending on the address range. These are routed through standard AND gates to drive the `CS_n` (Chip Select) pins on the physical RAM, ROM, and Video memory chips.
 4.  **Memory Chips (SRAM / EEPROM):**
-    *   *Address Lines:* Driven steadily by the two 74HC573 latches.
+    *   *Address Lines:* Driven steadily by the two latches.
     *   *Data Lines:* Wired back to the ASIC's `uio[7:0]` bus.
     *   *Control Lines:* `WE_n` and `OE_n` driven directly by the ASIC's `MEM_WE` and `MEM_OE` pins. `CS_n` driven by the 74HC138 logic.
 
@@ -69,7 +77,7 @@ The ASIC interfaces with external memory through a shared 8-bit bidirectional bu
 Relying solely on behavioral simulation leaves the project vulnerable to physical timing failures. The verification pipeline orchestrated by Claude Code will progress through six escalating steps of strictness.
 
 *   **Step 1. Behavioral Mocking and Simulation (Cocotb & Python)**
-    *   *Approach:* Claude Code will generate asynchronous Python coroutines simulating the external 74HC573 latches, the 74HC138 decoder, and the physical SRAM/ROM/IO chips.
+    *   *Approach:* Claude Code will generate asynchronous Python coroutines simulating the external latches, the 74HC138 decoder, and the physical SRAM/ROM/IO chips.
     *   *Goal:* Verify the logical timing of the multiplexed bus FSM and ensure the ASIC correctly executes multi-cycle read/write transactions against the mocked memory map.
 *   **Step 2. ISA Compliance Testing (Software-in-the-Loop)**
     *   *Approach:* Small 6502 assembly files are written for every opcode and addressing mode. These are compiled via `vasm`, loaded into the Cocotb Python ROM mock at `0xC000`, and executed by the simulated Verilog ASIC.
@@ -85,7 +93,7 @@ Relying solely on behavioral simulation leaves the project vulnerable to physica
     *   *Goal:* Prove that the microscopic propagation delays of the physical standard cells do not violate the required setup and hold times of the memory bus.
 *   **Step 6. Hardware Prototyping (iCE40 FPGA)**
     *   *Approach:* Synthesizing the *Digital*-exported Verilog through Project IceStorm and flashing it to a Lattice iCE40 FPGA.
-    *   *Goal:* Interface the physical FPGA with a breadboard containing the actual 74HC573 latches and SRAM to validate real-world electrical timing before ASIC fabrication.
+    *   *Goal:* Interface the physical FPGA with a breadboard containing the actual latches and SRAM to validate real-world electrical timing before ASIC fabrication.
 
 ---
 
@@ -99,6 +107,6 @@ Relying solely on behavioral simulation leaves the project vulnerable to physica
 | **Phase 4** | **ISA Test Campaign Setup** | 1. Write atomic `.asm` files for targeted 6502 opcodes (e.g., `LDA`, `STA`, `ADC`).<br>2. Write a Python Cocotb script that compiles the `.asm`, loads the binary into the ROM mock, pulses the reset vector, and asserts the final RAM state.<br>3. Verify these higher-level tests fail. | |
 | **Phase 5** | **Logic Design** | 1. Open *Digital* and build the hierarchical FSM and 6502 subset ALU/Registers.<br>2. Export the design as a Verilog module.<br>3. Instantiate the exported Verilog inside the `tt_um_template.v` top-level file. | |
 | **Phase 6** | **Simulation & Hardening** | 1. Run the Cocotb BDD suite (both Bus tests and ISA Assembly tests) against the exported Verilog.<br>2. Generate VCD files and inspect failing transitions in GTKWave.<br>3. Iterate the *Digital* schematic until all ISA compliance tests pass.<br>4. Run SymbiYosys formal proofs to guarantee FSM stability. | |
-| **Phase 7** | **Physical Prototyping** | 1. Write the `pins.pcf` mapping file for the iCE40 FPGA board.<br>2. Breadboard the 74HC573 latches, 74HC138 decoder, and memory chips.<br>3. Flash the FPGA via `iceprog` and run physical logic analyzer tests on the memory bus. | |
+| **Phase 7** | **Physical Prototyping** | 1. Write the `pins.pcf` mapping file for the iCE40 FPGA board.<br>2. Breadboard the latches, 74HC138 decoder, and memory chips.<br>3. Flash the FPGA via `iceprog` and run physical logic analyzer tests on the memory bus. | |
 | **Phase 8** | **ASIC Compilation** | 1. Push the final *Digital*-exported Verilog to the GitHub repository.<br>2. Monitor the automated OpenLane GitHub Action as it performs Logic Synthesis, Floorplanning, and Routing.<br>3. Verify Area and Gate Count limits. | |
 | **Phase 9** | **Tapeout Submission** | 1. Review the automated Gate-Level Simulation (GLS) logs to ensure no timing violations occurred during layout.<br>2. Navigate to the Tiny Tapeout portal and paste the GitHub repository URL.<br>3. Finalize pin descriptions, select the target shuttle run, and complete checkout. | |
