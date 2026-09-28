@@ -17,6 +17,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, Edge, SimTimeoutError, with_timeout
 
+from mocks.bitutil import bit, byte
 from mocks.latch_573 import Latch
 from mocks.sram import SRAM
 
@@ -56,7 +57,7 @@ def _wire_bus(dut):
     return low_latch, high_latch, sram
 
 
-async def _watch_falling_bit(control_signal, bit, on_fall):
+async def _watch_falling_bit(control_signal, bit_index, on_fall):
     """Repeatedly waits for `control_signal` (a whole vector) to change and
     calls `on_fall()` whenever the given bit falls 1->0.
 
@@ -64,10 +65,10 @@ async def _watch_falling_bit(control_signal, bit, on_fall):
     bit-selects of a vector, so bit edges are detected in Python off
     whole-vector Edge triggers instead.
     """
-    previous = (int(control_signal.value) >> bit) & 1
+    previous = bit(control_signal, bit_index)
     while True:
         await Edge(control_signal)
-        current = (int(control_signal.value) >> bit) & 1
+        current = bit(control_signal, bit_index)
         if previous == 1 and current == 0:
             on_fall()
         previous = current
@@ -158,7 +159,7 @@ async def test_cpu_write_reaches_memory(dut):
         _watch_falling_bit(
             dut.uo_out,
             MEM_WE_N,
-            lambda: writes.append((sram.address, int(dut.uio_out.value))),
+            lambda: writes.append((sram.address, byte(dut.uio_out))),
         )
     )
 

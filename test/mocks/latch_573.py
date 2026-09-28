@@ -15,6 +15,8 @@ on part-selects of a vector, only on the vector itself.
 import cocotb
 from cocotb.triggers import Edge, First, ReadOnly
 
+from mocks.bitutil import bit, byte
+
 
 class Latch:
     def __init__(self, control_signal, le_bit, data_signal):
@@ -25,14 +27,14 @@ class Latch:
         self._task = cocotb.start_soon(self._run())
 
     def _le(self):
-        return (int(self._control.value) >> self._le_bit) & 1
+        return bit(self._control, self._le_bit)
 
     async def _run(self):
         while True:
             await First(Edge(self._control), Edge(self._data))
             await ReadOnly()
             if self._le() == 1:
-                self.value = int(self._data.value)
+                self.value = byte(self._data)
 
     def stop(self):
         self._task.kill()

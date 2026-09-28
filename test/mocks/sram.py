@@ -16,6 +16,8 @@ callbacks on part-selects of a vector, only on the vector itself.
 import cocotb
 from cocotb.triggers import Edge, First, ReadOnly
 
+from mocks.bitutil import bit, byte
+
 
 class SRAM:
     def __init__(self, low_latch, high_latch, data_out_signal, data_in_signal,
@@ -35,10 +37,10 @@ class SRAM:
         return (self._high_latch.value << 8) | self._low_latch.value
 
     def _we_n(self):
-        return (int(self._control.value) >> self._we_n_bit) & 1
+        return bit(self._control, self._we_n_bit)
 
     def _oe_n(self):
-        return (int(self._control.value) >> self._oe_n_bit) & 1
+        return bit(self._control, self._oe_n_bit)
 
     async def _run(self):
         while True:
@@ -46,7 +48,7 @@ class SRAM:
             await ReadOnly()
 
             if self._we_n() == 0:
-                self.memory[self.address] = int(self._data_out.value) & 0xFF
+                self.memory[self.address] = byte(self._data_out)
 
             if self._oe_n() == 0:
                 self._data_in.value = self.memory[self.address]
