@@ -3,10 +3,11 @@
 
 """Bus test suite implementing test/features/bus_latching.feature.
 
-Pin mapping assumed for uo_out[3:0] (per README's "Sequentially pushes the
-lower address, upper address, and finally reads/writes data"):
-    uo_out[0] = ALE_L    uo_out[1] = ALE_H
-    uo_out[2] = MEM_WE_n uo_out[3] = MEM_OE_n (active low, per README)
+Pin mapping (per src/project.v's `assign uo_out = {3'b0, mre_set, mwe_set,
+ai_set, ahe_set, ale_set}`), all active-HIGH strobes matching this design's
+"_set" convention (asserted when the bit is 1):
+    uo_out[0] = ALE_L (ale_set)   uo_out[1] = ALE_H (ahe_set)
+    uo_out[3] = MEM_WE (mwe_set) uo_out[4] = MEM_OE (mre_set)
 
 Drives/observes only real TT pins (ui_in, uo_out, uio_in, uio_out, clk,
 rst_n, ena), per CLAUDE.md, so this suite is unchanged when later run
@@ -24,8 +25,8 @@ from mocks.sram import SRAM
 ALE_L = 0
 ALE_H = 1
 ALE_I = 2
-MEM_WE_N = 3
-MEM_OE_N = 4
+MEM_WE = 3
+MEM_OE = 4
 
 RESET_VECTOR = 0xFFFC
 
@@ -51,15 +52,16 @@ def _wire_bus(dut):
         data_out_signal=dut.uio_out,
         data_in_signal=dut.uio_in,
         control_signal=dut.uo_out,
-        we_n_bit=MEM_WE_N,
-        oe_n_bit=MEM_OE_N,
+        we_bit=MEM_WE,
+        oe_bit=MEM_OE,
     )
     return low_latch, high_latch, sram
 
 
-async def _watch_falling_bit(control_signal, bit_index, on_fall):
+async def _watch_rising_bit(control_signal, bit_index, on_rise):
     """Repeatedly waits for `control_signal` (a whole vector) to change and
-    calls `on_fall()` whenever the given bit falls 1->0.
+    calls `on_rise()` whenever the given bit rises 0->1 (this design's
+    "_set" signals -- e.g. mwe_set, mre_set -- are active-high strobes).
 
     Icarus Verilog's VPI can't register value-change callbacks on
     bit-selects of a vector, so bit edges are detected in Python off
@@ -69,8 +71,8 @@ async def _watch_falling_bit(control_signal, bit_index, on_fall):
     while True:
         await Edge(control_signal)
         current = bit(control_signal, bit_index)
-        if previous == 1 and current == 0:
-            on_fall()
+        if previous == 0 and current == 1:
+            on_rise()
         previous = current
 
 
@@ -98,7 +100,7 @@ async def test_reset_vector_fetch_reads_and_latches_correct_addresses(dut):
 
     reads = []
     cocotb.start_soon(
-        _watch_falling_bit(dut.uo_out, MEM_OE_N, lambda: reads.append(sram.address))
+        _watch_rising_bit(dut.uo_out, MEM_OE, lambda: reads.append(sram.address))
     )
 
     try:
@@ -156,9 +158,9 @@ async def test_cpu_write_reaches_memory(dut):
 
     writes = []
     cocotb.start_soon(
-        _watch_falling_bit(
+        _watch_rising_bit(
             dut.uo_out,
-            MEM_WE_N,
+            MEM_WE,
             lambda: writes.append((sram.address, byte(dut.uio_out))),
         )
     )
