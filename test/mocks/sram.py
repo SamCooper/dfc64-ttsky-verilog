@@ -15,8 +15,8 @@ callbacks on part-selects of a vector, only on the vector itself.
 """
 
 import cocotb
-from cocotb.triggers import Edge, First, NextTimeStep, ReadOnly
-
+from cocotb.triggers import Edge, Timer, First
+from cocotb.types import LogicArray
 from mocks.bitutil import bit, byte
 
 
@@ -45,20 +45,44 @@ class SRAM:
 
     async def _run(self):
         while True:
-            await First(Edge(self._control), Edge(self._data_out))
-            await ReadOnly()
+            # 1. TRIGGERING
+            # If your address is a calculated property and NOT a physical signal handle, 
+            # remove the Edge(self._address_handle) line!
+            triggers = [Edge(self._control), Edge(self._data_out)]
+            
+            # Only add the address trigger if you actually have a handle to the pins
+            if hasattr(self, '_address_pins'):
+                triggers.append(Edge(self._address_pins))
+                
+            await First(*triggers)
 
+            # 2. DELAY
+            # Simulate physical propagation delay to escape the delta-cycle 
+            # without using ReadOnly() or NextTimeStep()
+            await Timer(20, unit="ns")
+
+            # 3. WRITE CYCLE
             if self._we() == 1:
-                self.memory[self.address] = byte(self._data_out)
+                data_val = self._data_out.value
+                # Defensive check: Only write if the bus has valid 1s and 0s. 
+                # If it's full of 'Z's or 'X's, attempting to cast to int will crash.
+                if data_val.is_resolvable:
+                    self.memory[self.address] = data_val.integer
+                else:
+                    self.dut._log.warning(f"Attempted to write unresolved data to RAM: {data_val}")
 
+            # 4. READ CYCLE
             if self._oe() == 1:
-                # Signals can't be written during ReadOnly, and this
-                # simulator won't transition ReadOnly -> ReadWrite within
-                # the same time step, so defer the write to the start of
-                # the next time step instead.
-                read_value = self.memory[self.address]
-                await NextTimeStep()
+                if 0 <= self.address < len(self.memory):
+                    read_value = self.memory[self.address]
+                else:
+                    read_value = 0x00 # Default fallback
+                
                 self._data_in.value = read_value
+            else:
+                # 5. HIGH IMPEDANCE
+                # Release the bus when not reading so the ASIC can drive it
+                self._data_in.value = LogicArray("ZZZZZZZZ")
 
     def stop(self):
         self._task.kill()
