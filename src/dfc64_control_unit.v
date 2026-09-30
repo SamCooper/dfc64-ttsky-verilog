@@ -1,10 +1,9 @@
 module dfc64_control_unit (
     input clk,     // clock
     input rst_n,   // reset_n - low to reset
-    input [7:0] uio_in,  // IOs: Input path
     output reg [7:0] uio_out,  // IOs: Output path
     output reg [7:0] uio_oe,   // IOs: Enable path (active high: 0=input, 1=output)
-    input [23:0] ir,
+    input [7:0] ir,
     input [15:0] pc,
     output reg ale_set,
     output reg ahe_set,

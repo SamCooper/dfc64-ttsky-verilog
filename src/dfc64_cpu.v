@@ -5,6 +5,7 @@
 
 `default_nettype none
 
+/* verilator lint_off DECLFILENAME */
 module tt_um_samcooper_dfc64 (
     input  wire [7:0] ui_in,    // Dedicated inputs
     output wire [7:0] uo_out,   // Dedicated outputs
@@ -31,6 +32,8 @@ module tt_um_samcooper_dfc64 (
     wire drh_set;
 
     assign uo_out = {3'b0, mre_set, mwe_set, ai_set, ahe_set, ale_set};
+    // List all unused inputs to prevent warnings
+    wire _unused = &{ena, ui_in, ar_set_low, ar_set_hi, 1'b0};
 
     dfc64_program_counter program_counter (
       .pc_output(pc),
@@ -52,10 +55,9 @@ module tt_um_samcooper_dfc64 (
     dfc64_control_unit control_unit (
       .clk(clk),
       .rst_n(rst_n),
-      .uio_in(uio_in),
       .uio_out(uio_out),
       .uio_oe(uio_oe),
-      .ir(ir),
+      .ir(ir[7:0]),
       .pc(pc),
       .ale_set(ale_set),
       .ahe_set(ahe_set),
