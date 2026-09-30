@@ -78,6 +78,7 @@ class SRAM:
                 else:
                     read_value = 0x00 # Default fallback
                 
+                print ("Data read: ", hex(self.address))
                 self._data_in.value = read_value
             else:
                 # 5. HIGH IMPEDANCE

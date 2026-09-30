@@ -19,16 +19,16 @@ module dfc64_control_unit (
     output reg drl_set,
     output reg drh_set
 );
-    localparam STAGE_0_FETCH1 = 4'd0;
-    localparam STAGE_0_FETCH2 = 4'd1;
-    localparam STAGE_0_FETCH3 = 4'd2;
-    localparam STAGE_1_FETCH1 = 4'd3;
-    localparam STAGE_1_FETCH2 = 4'd4;
-    localparam STAGE_1_FETCH3 = 4'd5;
-    localparam STAGE_2_FETCH1 = 4'd6;
-    localparam STAGE_2_FETCH2 = 4'd7;
-    localparam STAGE_2_FETCH3 = 4'd8;
-    localparam STAGE_3_EXECUTE = 4'd9;
+    localparam FETCH_1_STAGE_1 = 4'd0;
+    localparam FETCH_1_STAGE_2 = 4'd1;
+    localparam FETCH_1_STAGE_3 = 4'd2;
+    localparam FETCH_2_STAGE_1 = 4'd3;
+    localparam FETCH_2_STAGE_2 = 4'd4;
+    localparam FETCH_2_STAGE_3 = 4'd5;
+    localparam FETCH_3_STAGE_1 = 4'd6;
+    localparam FETCH_3_STAGE_2 = 4'd7;
+    localparam FETCH_3_STAGE_3 = 4'd8;
+    localparam EXECUTE_STAGE = 4'd9;
     reg [3:0] stage;
 
     wire [7:0] op = ir[7:0]; // Your fetched opcode
@@ -64,21 +64,20 @@ module dfc64_control_unit (
             drl_set <= 0;
             drh_set <= 0;
 
-            if ((needs_zero_extra && (stage > STAGE_0_FETCH3)) ||
-                (needs_one_extra && (stage > STAGE_1_FETCH3)) ||
-                (needs_two_extra && (stage > STAGE_2_FETCH3))) begin
+            if ((needs_zero_extra && (stage > FETCH_1_STAGE_3)) ||
+                (needs_one_extra && (stage > FETCH_2_STAGE_3)) ||
+                (needs_two_extra && (stage > FETCH_3_STAGE_3))) begin
                 $display("Stage exe, z %d, 1 %d, 2 %d", needs_zero_extra, needs_one_extra, needs_two_extra);
-                stage <= STAGE_3_EXECUTE;
+                stage <= EXECUTE_STAGE;
 
                 case (ir[7:0])
                     OP_JMP_ABS: begin
                         pc_inc <= 0;
                         pc_jmp <= 1;
-                        stage <= STAGE_0_FETCH1;
+                        stage <= FETCH_1_STAGE_1;
                     end
                     default: begin
-                        pc_inc <= 1;
-                        stage <= STAGE_0_FETCH1;
+                        stage <= FETCH_1_STAGE_1;
                     end
                 endcase
             end
@@ -86,36 +85,37 @@ module dfc64_control_unit (
                 $display("Stage %d, z %d, 1 %d, 2 %d", stage, needs_zero_extra, needs_one_extra, needs_two_extra);
 
                 case (stage)
-                    STAGE_0_FETCH1,
-                    STAGE_1_FETCH1,
-                    STAGE_2_FETCH1: begin
+                    FETCH_1_STAGE_1,
+                    FETCH_2_STAGE_1,
+                    FETCH_3_STAGE_1: begin
                         uio_oe <= 8'hFF;
                         uio_out <= pc[7:0];
                         ale_set <= 1;
                         stage <= stage + 1;
                     end
-                    STAGE_0_FETCH2,
-                    STAGE_1_FETCH2,
-                    STAGE_2_FETCH2: begin
+                    FETCH_1_STAGE_2,
+                    FETCH_2_STAGE_2,
+                    FETCH_3_STAGE_2: begin
                         uio_out <= pc[15:8];
                         ahe_set <= 1;
+                        mre_set <= 1;
                         stage <= stage + 1;
                     end
-                    STAGE_0_FETCH3: begin
+                    FETCH_1_STAGE_3: begin
                         uio_oe <= 8'h00;
                         mre_set <= 1;
                         ir_set <= 1;
                         pc_inc <= 1;
                         stage <= stage + 1;
                     end
-                    STAGE_1_FETCH3: begin
+                    FETCH_2_STAGE_3: begin
                         uio_oe <= 8'h00;
                         mre_set <= 1;
                         drl_set <= 1;
                         pc_inc <= 1;
                         stage <= stage + 1;
                     end
-                    STAGE_2_FETCH3: begin
+                    FETCH_3_STAGE_3: begin
                         uio_oe <= 8'h00;
                         mre_set <= 1;
                         drh_set <= 1;
