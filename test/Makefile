@@ -6,7 +6,7 @@ SIM ?= icarus
 FST ?= -fst # Use more efficient FST format
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(CURDIR)/../src
-PROJECT_SOURCES = dfc64_cpu.v dfc64_program_counter.v dfc64_instruction_register.v dfc64_control_unit.v
+PROJECT_SOURCES = dfc64_cpu.v dfc64_opcodes.v dfc64_program_counter.v dfc64_instruction_register.v dfc64_control_unit.v
 
 ifneq ($(GATES),yes)
 

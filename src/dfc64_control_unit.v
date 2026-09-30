@@ -19,114 +19,114 @@ module dfc64_control_unit (
     output reg drl_set,
     output reg drh_set
 );
+    localparam STAGE_0_FETCH1 = 4'd0;
+    localparam STAGE_0_FETCH2 = 4'd1;
+    localparam STAGE_0_FETCH3 = 4'd2;
+    localparam STAGE_1_FETCH1 = 4'd3;
+    localparam STAGE_1_FETCH2 = 4'd4;
+    localparam STAGE_1_FETCH3 = 4'd5;
+    localparam STAGE_2_FETCH1 = 4'd6;
+    localparam STAGE_2_FETCH2 = 4'd7;
+    localparam STAGE_2_FETCH3 = 4'd8;
+    localparam STAGE_3_EXECUTE = 4'd9;
     reg [3:0] stage;
 
+    wire [7:0] op = ir[7:0]; // Your fetched opcode
+
+    // 0 Extra Bytes: BRK/RTI/RTS, or ends in 8 or A
+    wire needs_zero_extra = (op == 8'h00) || (op == 8'h40) || (op == 8'h60) || 
+                            ({op[3], op[2], op[0]} == 3'b100);
+
+    // 2 Extra Bytes: JSR (0x20), or ends in 9, C, D, or E
+    wire needs_two_extra = (op == 8'h20) || 
+                        (op[3:0] == 4'h9) || 
+                        (op[3:2] == 2'b11);
+
+    // Default to 1 Extra Byte
+    wire needs_one_extra = !(needs_two_extra || needs_zero_extra);
+
     always @ (posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-                    $display("Reset!");
-                    stage <= 3;
-                end
+        if (!rst_n) begin
+                $display("Reset!");
+                stage <= 3;
+            end
+        else begin
+            ale_set <= 0;
+            ahe_set <= 0;
+            ai_set <= 0;
+            mwe_set <= 0;
+            mre_set <= 0;
+            pc_jmp <= 0;
+            pc_inc <= 0;
+            ar_set_low <= 0;
+            ar_set_hi <= 0;
+            ir_set <= 0;
+            drl_set <= 0;
+            drh_set <= 0;
+
+            if ((needs_zero_extra && (stage > STAGE_0_FETCH3)) ||
+                (needs_one_extra && (stage > STAGE_1_FETCH3)) ||
+                (needs_two_extra && (stage > STAGE_2_FETCH3))) begin
+                $display("Stage exe, z %d, 1 %d, 2 %d", needs_zero_extra, needs_one_extra, needs_two_extra);
+                stage <= STAGE_3_EXECUTE;
+
+                case (ir[7:0])
+                    OP_JMP_ABS: begin
+                        pc_inc <= 0;
+                        pc_jmp <= 1;
+                        stage <= STAGE_0_FETCH1;
+                    end
+                    default: begin
+                        pc_inc <= 1;
+                        stage <= STAGE_0_FETCH1;
+                    end
+                endcase
+            end
             else begin
-                ale_set <= 0;
-                ahe_set <= 0;
-                ai_set <= 0;
-                mwe_set <= 0;
-                mre_set <= 0;
-                pc_jmp <= 0;
-                pc_inc <= 0;
-                ar_set_low <= 0;
-                ar_set_hi <= 0;
-                ir_set <= 0;
-                drl_set <= 0;
-                drh_set <= 0;
+                $display("Stage %d, z %d, 1 %d, 2 %d", stage, needs_zero_extra, needs_one_extra, needs_two_extra);
 
                 case (stage)
-                // fetch first byte
-                //   enable bus out and lo address out
-                    4'd0: begin
+                    STAGE_0_FETCH1,
+                    STAGE_1_FETCH1,
+                    STAGE_2_FETCH1: begin
                         uio_oe <= 8'hFF;
                         uio_out <= pc[7:0];
                         ale_set <= 1;
                         stage <= stage + 1;
                     end
-                //   enable bus out and hi address out
-                    4'd1: begin
+                    STAGE_0_FETCH2,
+                    STAGE_1_FETCH2,
+                    STAGE_2_FETCH2: begin
                         uio_out <= pc[15:8];
                         ahe_set <= 1;
                         stage <= stage + 1;
                     end
-                //   enable bus in and read data
-                //   write bus data to ir
-                    4'd2: begin
+                    STAGE_0_FETCH3: begin
                         uio_oe <= 8'h00;
                         mre_set <= 1;
                         ir_set <= 1;
                         pc_inc <= 1;
                         stage <= stage + 1;
                     end
-                    default: begin
-                        case (ir[7:0])
-                            8'h4C: begin
-                                $display("Stage %d!", stage);
-                                case (stage)
-                                // fetch second byte
-                                //   enable bus out and lo address out
-                                    4'd3: begin
-                                        uio_oe <= 8'hFF;
-                                        uio_out <= pc[7:0];
-                                        ale_set <= 1;
-                                        stage <= stage + 1;
-                                    end
-                                //   enable bus out and hi address out
-                                    4'd4: begin
-                                        uio_out <= pc[15:8];
-                                        ahe_set <= 1;
-                                        stage <= stage + 1;
-                                    end
-                                //   enable bus in and read data
-                                //   write bus data to ir dl
-                                    4'd5: begin
-                                        uio_oe <= 8'h00;
-                                        mre_set <= 1;
-                                        drl_set <= 1;
-                                        pc_inc <= 1;
-                                        stage <= stage + 1;
-                                    end
-                                // fetch third byte
-                                //   enable bus out and lo address out
-                                    4'd6: begin
-                                        uio_oe <= 8'hFF;
-                                        uio_out <= pc[7:0];
-                                        ale_set <= 1;
-                                        stage <= stage + 1;
-                                    end
-                                //   enable bus out and hi address out
-                                    4'd7: begin
-                                        uio_out <= pc[15:8];
-                                        ahe_set <= 1;
-                                        stage <= stage + 1;
-                                    end
-                                //   enable bus in and read data
-                                //   write bus data to ir dh
-                                    4'd8: begin
-                                        uio_oe <= 8'h00;
-                                        mre_set <= 1;
-                                        drh_set <= 1;
-                                        stage <= stage + 1;
-                                    end
-                                //   set pc
-                                    4'd9: begin
-                                        pc_jmp <= 1;
-                                        stage <= 0;
-                                    end
-                                endcase
-                            end
-                            default: begin
-                            end
-                        endcase
+                    STAGE_1_FETCH3: begin
+                        uio_oe <= 8'h00;
+                        mre_set <= 1;
+                        drl_set <= 1;
+                        pc_inc <= 1;
+                        stage <= stage + 1;
                     end
-                    endcase
+                    STAGE_2_FETCH3: begin
+                        uio_oe <= 8'h00;
+                        mre_set <= 1;
+                        drh_set <= 1;
+                        pc_inc <= 1;
+                        stage <= stage + 1;
+                    end
+                    default: begin
+                    end
+                endcase
             end
+        end
     end
 
 endmodule

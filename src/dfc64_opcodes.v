@@ -1,0 +1,1 @@
+parameter OP_JMP_ABS = 8'h4C;
