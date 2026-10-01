@@ -10,7 +10,7 @@ module dfc64_program_counter (
                 pc_output <= 16'hFFFC;
             else begin
                 if (jmp == 1) begin
-                    $display("JMP to %h!", pc_input);
+                    // $display("JMP to %h!", pc_input);
                     pc_output <= pc_input;
                 end
                 else if (inc == 1)

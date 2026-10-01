@@ -46,7 +46,7 @@ module dfc64_control_unit (
 
     always @ (posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-                $display("Reset!");
+                // $display("Reset!");
                 stage <= 3;
             end
         else begin
@@ -66,7 +66,7 @@ module dfc64_control_unit (
             if ((needs_zero_extra && (stage > FETCH_1_STAGE_3)) ||
                 (needs_one_extra && (stage > FETCH_2_STAGE_3)) ||
                 (needs_two_extra && (stage > FETCH_3_STAGE_3))) begin
-                $display("Stage exe, z %d, 1 %d, 2 %d", needs_zero_extra, needs_one_extra, needs_two_extra);
+                // $display("Stage exe, z %d, 1 %d, 2 %d", needs_zero_extra, needs_one_extra, needs_two_extra);
                 stage <= EXECUTE_STAGE;
 
                 case (ir[7:0])
@@ -81,7 +81,7 @@ module dfc64_control_unit (
                 endcase
             end
             else begin
-                $display("Stage %d, z %d, 1 %d, 2 %d", stage, needs_zero_extra, needs_one_extra, needs_two_extra);
+                // $display("Stage %d, z %d, 1 %d, 2 %d", stage, needs_zero_extra, needs_one_extra, needs_two_extra);
 
                 case (stage)
                     FETCH_1_STAGE_1,
