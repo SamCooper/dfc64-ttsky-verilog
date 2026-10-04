@@ -47,7 +47,7 @@ async def _run_assembly_test(dut, asm_file):
     dut.rst_n.value = 1 
     
     try:
-        await with_timeout(ClockCycles(dut.clk, 200), 2, "ms")
+        await with_timeout(ClockCycles(dut.clk, 300), 3, "ms")
     except SimTimeoutError:
         pass # Expected if the assembly program ends in an infinite JMP loop
 

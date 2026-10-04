@@ -23,26 +23,24 @@ module tt_um_samcooper_dfc64 (
     wire mre_set;
     wire [23:0] ir;
     wire [15:0] pc;
-    wire [7:0] acc_in;
-    wire [7:0] acc_out;
-    wire [7:0] x_in;
-    wire [7:0] x_out;
-    wire [7:0] y_in;
-    wire [7:0] y_out;
     wire pc_jmp;
     wire pc_inc;
-    wire reg_a_write;
-    wire reg_x_write;
-    wire reg_y_write;
-    wire ir_set;
-    wire drl_set;
-    wire drh_set;
+
+    wire        write_en;
+    wire [3:0]  read_reg_sel1;
+    wire [3:0]  read_reg_sel2;
+    wire [3:0]  write_reg_sel;
+    wire [7:0] alu_result;
+    wire [7:0] mux_data1;
+    wire [7:0] mux_data2;
 
     assign uo_out = {3'b0, mre_set, mwe_set, ai_set, ahe_set, ale_set};
+
     // List all unused inputs to prevent warnings
     wire _unused = &{ena, ui_in, 1'b0};
 
     dfc64_program_counter program_counter (
+      .clk(clk),
       .pc_output(pc),
       .pc_input(ir[23:8]),
       .rst_n(rst_n),
@@ -50,66 +48,57 @@ module tt_um_samcooper_dfc64 (
       .inc(pc_inc)
     );
 
-    dfc64_instruction_register instruction_register (
-      .input_byte(uio_in),
-      .rst_n(rst_n),
-      .set_ir(ir_set),
-      .set_drl(drl_set),
-      .set_drh(drh_set),
-      .instruction(ir)
-    );
-
-    dfc64_reg_a reg_a (
+    dfc64_data_path data_path (
         .clk(clk),
         .rst_n(rst_n),
-        .input_enable(reg_a_write),
-        .data_input(acc_in),
-        .reg_value(acc_out)
+
+        // Control Signals (Decoded by the Control Unit)
+        .write_en(write_en),
+        .mem_write(mwe_set), 
+
+        // bus IO wires
+        .mem_in(uio_in),   // Data loaded from RAM
+        .mem_out(uio_out),   // Data loaded from RAM
+        .mem_oe(uio_oe),
+        .ale_set(ale_set),
+        .ahe_set(ahe_set),
+    
+        // Addresses
+        .read_reg1(read_reg_sel1),
+        .read_reg2(read_reg_sel2),
+        .write_reg(write_reg_sel),
+    
+        // 8-bit Data Sources
+        .alu_result(alu_result), // Result of a math operation
+        .pc(pc),
+    
+        // 8-bit Outputs
+        .ir_data(ir),
+        .read_data1(mux_data1),
+        .read_data2(mux_data2)
     );
 
-    dfc64_reg_x reg_x (
-        .clk(clk),
-        .rst_n(rst_n),
-        .input_enable(reg_x_write),
-        .data_input(x_in),
-        .reg_value(x_out)
-    );
-
-    dfc64_reg_y reg_y (
-        .clk(clk),
-        .rst_n(rst_n),
-        .input_enable(reg_y_write),
-        .data_input(y_in),
-        .reg_value(y_out)
+    dfc64_alu alu (
+      .src_data1(mux_data1),
+      .src_data2(mux_data2),
+      .result_data(alu_result)
     );
 
     dfc64_control_unit control_unit (
       .clk(clk),
       .rst_n(rst_n),
-      .uio_in(uio_in),
-      .uio_out(uio_out),
-      .uio_oe(uio_oe),
       .ir(ir),
-      .pc(pc),
-      .ale_set(ale_set),
-      .ahe_set(ahe_set),
-      .ai_set(ai_set),
-      .mwe_set(mwe_set),
-      .mre_set(mre_set),
+
       .pc_jmp(pc_jmp),
       .pc_inc(pc_inc),
-      .reg_a_write(reg_a_write),
-      .reg_a_output(acc_out),
-      .reg_a_input(acc_in),
-      .reg_x_write(reg_x_write),
-      .reg_x_output(x_out),
-      .reg_x_input(x_in),
-      .reg_y_write(reg_y_write),
-      .reg_y_output(y_out),
-      .reg_y_input(y_in),
-      .ir_set(ir_set),
-      .drl_set(drl_set),
-      .drh_set(drh_set)
+
+      .mem_write_en(mwe_set),
+      .mem_read_en(mre_set),
+      .write_en(write_en),
+
+      .read_reg_sel1(read_reg_sel1),
+      .read_reg_sel2(read_reg_sel2),
+      .write_reg_sel(write_reg_sel)
     );
 
 endmodule

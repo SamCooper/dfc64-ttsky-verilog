@@ -6,7 +6,7 @@ SIM ?= icarus
 FST ?= -fst # Use more efficient FST format
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(CURDIR)/../src
-PROJECT_SOURCES = dfc64_cpu.v dfc64_opcodes.v dfc64_program_counter.v dfc64_instruction_register.v dfc64_reg_a.v dfc64_reg_x.v dfc64_reg_y.v dfc64_control_unit.v
+PROJECT_SOURCES = *.v 
 
 ifneq ($(GATES),yes)
 
@@ -40,6 +40,11 @@ TOPLEVEL = tb
 
 # List test modules to run, separated by commas and without the .py suffix:
 COCOTB_TEST_MODULES = test,test_bus,test_assembly
+
+# Keep Verilog ($display) and Python (print/logging) output in true order, even
+# when redirected to a file or pipe: line-buffer vvp's stdio and unbuffer Python.
+export PYTHONUNBUFFERED = 1
+SIM_CMD_PREFIX ?= stdbuf -oL -eL
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim

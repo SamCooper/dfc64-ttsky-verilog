@@ -19,7 +19,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, Edge, SimTimeoutError, with_timeout
 
 from mocks.bitutil import bit, byte
-from mocks.latch_573 import Latch
+from mocks.latch_163 import Latch
 from mocks.sram import SRAM
 
 ALE_L = 0
@@ -44,8 +44,8 @@ async def _boot(dut):
 
 def _wire_bus(dut):
     """Given: instantiate the off-chip latches + SRAM, wired to the DUT's pins."""
-    low_latch = Latch(dut.uo_out, ALE_L, dut.uio_out)
-    high_latch = Latch(dut.uo_out, ALE_H, dut.uio_out)
+    low_latch = Latch(dut.clk, dut.uo_out, ALE_L, dut.uio_out)
+    high_latch = Latch(dut.clk, dut.uo_out, ALE_H, dut.uio_out)
     sram = SRAM(
         dut,
         low_latch,
@@ -97,6 +97,7 @@ async def test_reset_vector_fetch_reads_and_latches_correct_addresses(dut):
     sram.memory[target] = 0xEA  # NOP
 
     # When: release reset.
+    await ClockCycles(dut.clk, 2)  # let the mocks see a clock edge while still in reset
     dut.rst_n.value = 1
 
     reads = []
@@ -155,24 +156,25 @@ async def test_cpu_write_reaches_memory(dut):
     sram.memory[program_start + 6] = program_start & 0xFF
     sram.memory[program_start + 7] = (program_start >> 8) & 0xFF
 
+    await ClockCycles(dut.clk, 2)  # let the mocks see a clock edge while still in reset
     dut.rst_n.value = 1
 
-    writes = []
-    cocotb.start_soon(
-        _watch_rising_bit(
-            dut.uo_out,
-            MEM_WE,
-            lambda: writes.append((sram.address, byte(dut.uio_out))),
-        )
-    )
+    # writes = []
+    # cocotb.start_soon(
+    #     _watch_rising_bit(
+    #         dut.uo_out,
+    #         MEM_WE,
+    #         lambda: writes.append((sram.address, byte(dut.uio_out))),
+    #     )
+    # )
 
     try:
         await with_timeout(ClockCycles(dut.clk, 60), 600, "us")
     except SimTimeoutError:
         pass
 
-    assert (target_addr, expected_value) in writes, (
+    assert (target_addr, expected_value) in sram.writes, (
         f"expected a write of ${expected_value:02X} to ${target_addr:04X}; "
-        f"observed writes {[(f'${a:04X}', f'${v:02X}') for a, v in writes]}"
+        f"observed writes {[(f'${a:04X}', f'${v:02X}') for a, v in sram.writes]}"
     )
     assert sram.memory[target_addr] == expected_value

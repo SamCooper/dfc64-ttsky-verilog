@@ -32,6 +32,7 @@ class SRAM:
         self._we_bit = we_bit
         self._oe_bit = oe_bit
         self.memory = bytearray(size)
+        self.writes = []
         self._task = cocotb.start_soon(self._run())
 
     @property
@@ -68,8 +69,9 @@ class SRAM:
                 # Defensive check: Only write if the bus has valid 1s and 0s. 
                 # If it's full of 'Z's or 'X's, attempting to cast to int will crash.
                 if data_val.is_resolvable:
-                    print (f"Data write: {hex(self.address)} {hex(data_val.to_unsigned())}")
+                    self.dut._log.info(f"SRAM write: {hex(self.address)} {hex(data_val.to_unsigned())}")
                     self.memory[self.address] = data_val.to_unsigned()
+                    self.writes.append((self.address, data_val.to_unsigned()))
                 else:
                     self.dut._log.warning(f"Attempted to write unresolved data to RAM: {self.address} {data_val}")
 
@@ -80,7 +82,7 @@ class SRAM:
                 else:
                     read_value = 0x00 # Default fallback
                 
-                print ("Data read: ", hex(self.address))
+                self.dut._log.info(f"SRAM read: {hex(self.address)}")
                 self._data_in.value = read_value
             else:
                 # 5. HIGH IMPEDANCE
