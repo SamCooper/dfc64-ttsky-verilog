@@ -80,18 +80,29 @@ async def _run_assembly_test(dut, asm_file):
 
 # --- MODERN COCOTB DYNAMIC TEST GENERATOR ---
 
+def create_test(asm_file_path, test_name):
+    """Factory to scope the file path and apply the decorator."""
+    
+    # 1. Define the raw async function
+    async def dynamic_test(dut):
+        await _run_assembly_test(dut, asm_file_path)
+
+    # 2. Rename it BEFORE decorating so Cocotb picks up the right name
+    dynamic_test.__name__ = test_name
+    dynamic_test.__qualname__ = test_name
+
+    # 3. Apply the decorator programmatically and return the TestGenerator object
+    return cocotb.test()(dynamic_test)
 asm_files = glob.glob("asm_tests/*.asm")
 
 for asm_file in asm_files:
-    # Extract the exact filename without the extension (e.g., 'test_add_store')
+    # Calculate the clean test name here
     test_name = os.path.splitext(os.path.basename(asm_file))[0]
-
-    @cocotb.test()
-    async def dynamic_test_wrapper(dut, file_path=asm_file):
-        await _run_assembly_test(dut, file_path)
     
-    # Rename the function internally so Pytest/Cocotb logging uses this exact name
-    dynamic_test_wrapper.__name__ = test_name
-    dynamic_test_wrapper.__qualname__ = test_name
+    # Ensure it starts with 'test_' for standard test discovery
+    if not test_name.startswith("test_"):
+        test_name = f"test_{test_name}"
+        
+    # Generate the test and assign it to globals using our calculated string key
+    globals()[test_name] = create_test(asm_file, test_name)
     
-    globals()[test_name] = dynamic_test_wrapper
