@@ -25,9 +25,15 @@ module tt_um_samcooper_dfc64 (
     wire [15:0] pc;
     wire [7:0] acc_in;
     wire [7:0] acc_out;
+    wire [7:0] x_in;
+    wire [7:0] x_out;
+    wire [7:0] y_in;
+    wire [7:0] y_out;
     wire pc_jmp;
     wire pc_inc;
     wire reg_a_write;
+    wire reg_x_write;
+    wire reg_y_write;
     wire ir_set;
     wire drl_set;
     wire drh_set;
@@ -60,9 +66,24 @@ module tt_um_samcooper_dfc64 (
         .reg_value(acc_out)
     );
 
+    dfc64_reg_x reg_x (
+        .rst_n(rst_n),
+        .input_enable(reg_x_write),
+        .data_input(x_in),
+        .reg_value(x_out)
+    );
+
+    dfc64_reg_y reg_y (
+        .rst_n(rst_n),
+        .input_enable(reg_y_write),
+        .data_input(y_in),
+        .reg_value(y_out)
+    );
+
     dfc64_control_unit control_unit (
       .clk(clk),
       .rst_n(rst_n),
+      .uio_in(uio_in),
       .uio_out(uio_out),
       .uio_oe(uio_oe),
       .ir(ir),
@@ -77,6 +98,12 @@ module tt_um_samcooper_dfc64 (
       .reg_a_write(reg_a_write),
       .reg_a_output(acc_out),
       .reg_a_input(acc_in),
+      .reg_x_write(reg_x_write),
+      .reg_x_output(x_out),
+      .reg_x_input(x_in),
+      .reg_y_write(reg_y_write),
+      .reg_y_output(y_out),
+      .reg_y_input(y_in),
       .ir_set(ir_set),
       .drl_set(drl_set),
       .drh_set(drh_set)

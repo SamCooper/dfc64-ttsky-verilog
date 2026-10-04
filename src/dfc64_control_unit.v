@@ -1,6 +1,7 @@
 module dfc64_control_unit (
     input clk,     // clock
     input rst_n,   // reset_n - low to reset
+    input [7:0] uio_in,    // IOs: Input path
     output reg [7:0] uio_out,  // IOs: Output path
     output reg [7:0] uio_oe,   // IOs: Enable path (active high: 0=input, 1=output)
     input [23:0] ir,
@@ -15,6 +16,12 @@ module dfc64_control_unit (
     output reg reg_a_write,
     input [7:0] reg_a_output,
     output reg [7:0] reg_a_input,
+    output reg reg_x_write,
+    input [7:0] reg_x_output,
+    output reg [7:0] reg_x_input,
+    output reg reg_y_write,
+    input [7:0] reg_y_output,
+    output reg [7:0] reg_y_input,
     output reg ir_set,
     output reg drl_set,
     output reg drh_set
@@ -61,6 +68,8 @@ module dfc64_control_unit (
             pc_jmp <= 0;
             pc_inc <= 0;
             reg_a_write <= 0;
+            reg_x_write <= 0;
+            reg_y_write <= 0;
             ir_set <= 0;
             drl_set <= 0;
             drh_set <= 0;
@@ -76,6 +85,78 @@ module dfc64_control_unit (
                         pc_inc <= 0;
                         pc_jmp <= 1;
                         stage <= FETCH_1_STAGE_1;
+                    end
+                    OP_STA_ZP: begin
+                        case (stage)
+                            default: begin
+                                $display("STA_Z_1");
+                                uio_oe <= 8'hFF;
+                                uio_out <= ir[15:8];
+                                ale_set <= 1;
+                                stage <= EXECUTE_STAGE_2;
+                            end
+                            EXECUTE_STAGE_2: begin
+                                $display("STA_Z_2");
+                                uio_out <= 8'h00;
+                                ahe_set <= 1;
+                                stage <= EXECUTE_STAGE_3;
+                            end
+                            EXECUTE_STAGE_3: begin
+                                $display("STA_Z_3");
+                                uio_out <= reg_a_output;
+                                mwe_set <= 1;
+                                pc_inc <= 1;
+                                stage <= FETCH_1_STAGE_1;
+                            end
+                        endcase
+                    end
+                    OP_STX_ZP: begin
+                        case (stage)
+                            default: begin
+                                $display("STX_Z_1");
+                                uio_oe <= 8'hFF;
+                                uio_out <= ir[15:8];
+                                ale_set <= 1;
+                                stage <= EXECUTE_STAGE_2;
+                            end
+                            EXECUTE_STAGE_2: begin
+                                $display("STX_Z_2");
+                                uio_out <= 8'h00;
+                                ahe_set <= 1;
+                                stage <= EXECUTE_STAGE_3;
+                            end
+                            EXECUTE_STAGE_3: begin
+                                $display("STX_Z_3");
+                                uio_out <= reg_x_output;
+                                mwe_set <= 1;
+                                pc_inc <= 1;
+                                stage <= FETCH_1_STAGE_1;
+                            end
+                        endcase
+                    end
+                    OP_STY_ZP: begin
+                        case (stage)
+                            default: begin
+                                $display("STY_Z_1");
+                                uio_oe <= 8'hFF;
+                                uio_out <= ir[15:8];
+                                ale_set <= 1;
+                                stage <= EXECUTE_STAGE_2;
+                            end
+                            EXECUTE_STAGE_2: begin
+                                $display("STY_Z_2");
+                                uio_out <= 8'h00;
+                                ahe_set <= 1;
+                                stage <= EXECUTE_STAGE_3;
+                            end
+                            EXECUTE_STAGE_3: begin
+                                $display("STY_Z_3");
+                                uio_out <= reg_y_output;
+                                mwe_set <= 1;
+                                pc_inc <= 1;
+                                stage <= FETCH_1_STAGE_1;
+                            end
+                        endcase
                     end
                     OP_STA_ABS: begin
                         case (stage)
@@ -106,7 +187,99 @@ module dfc64_control_unit (
                         reg_a_write <= 1;
                         stage <= FETCH_1_STAGE_1;
                     end
+                    OP_LDX_IMM: begin
+                        reg_x_input <= ir[15:8];
+                        reg_x_write <= 1;
+                        pc_inc <= 1;
+                        stage <= FETCH_1_STAGE_1;
+                    end
+                    OP_LDY_IMM: begin
+                        reg_y_input <= ir[15:8];
+                        reg_y_write <= 1;
+                        pc_inc <= 1;
+                        stage <= FETCH_1_STAGE_1;
+                    end
+                    OP_LDA_ZP: begin
+                        case (stage)
+                            default: begin
+                                $display("LDA_Z_1");
+                                uio_oe <= 8'hFF;
+                                uio_out <= ir[15:8];
+                                ale_set <= 1;
+                                stage <= EXECUTE_STAGE_2;
+                            end
+                            EXECUTE_STAGE_2: begin
+                                $display("LDA_Z_2");
+                                uio_out <= 8'h00;
+                                ahe_set <= 1;
+                                stage <= EXECUTE_STAGE_3;
+                            end
+                            EXECUTE_STAGE_3: begin
+                                $display("LDA_Z_3");
+                                uio_oe <= 8'h00;
+                                mre_set <= 1;
+                                reg_a_input <= uio_in;
+                                reg_a_write <= 1;
+                                pc_inc <= 1;
+                                stage <= FETCH_1_STAGE_1;
+                            end
+                        endcase
+                    end
+                    OP_LDX_ZP: begin
+                        case (stage)
+                            default: begin
+                                $display("LDX_Z_1");
+                                uio_oe <= 8'hFF;
+                                uio_out <= ir[15:8];
+                                ale_set <= 1;
+                                stage <= EXECUTE_STAGE_2;
+                            end
+                            EXECUTE_STAGE_2: begin
+                                $display("LDX_Z_2");
+                                uio_out <= 8'h00;
+                                ahe_set <= 1;
+                                stage <= EXECUTE_STAGE_3;
+                            end
+                            EXECUTE_STAGE_3: begin
+                                $display("LDX_Z_3");
+                                uio_oe <= 8'h00;
+                                mre_set <= 1;
+                                reg_x_input <= uio_in;
+                                reg_x_write <= 1;
+                                pc_inc <= 1;
+                                stage <= FETCH_1_STAGE_1;
+                            end
+                        endcase
+                    end
+                    OP_LDY_ZP: begin
+                        case (stage)
+                            default: begin
+                                $display("LDY_Z_1");
+                                uio_oe <= 8'hFF;
+                                uio_out <= ir[15:8];
+                                ale_set <= 1;
+                                stage <= EXECUTE_STAGE_2;
+                            end
+                            EXECUTE_STAGE_2: begin
+                                $display("LDY_Z_2");
+                                uio_out <= 8'h00;
+                                ahe_set <= 1;
+                                stage <= EXECUTE_STAGE_3;
+                            end
+                            EXECUTE_STAGE_3: begin
+                                $display("LDY_Z_3");
+                                uio_oe <= 8'h00;
+                                mre_set <= 1;
+                                reg_y_input <= uio_in;
+                                reg_y_write <= 1;
+                                pc_inc <= 1;
+                                stage <= FETCH_1_STAGE_1;
+                            end
+                        endcase
+                    end
                     default: begin
+                        $display("UNKNOWN OPCODE: %h", ir[7:0]);
+                        pc_inc <= 1;
                         stage <= FETCH_1_STAGE_1;
                     end
                 endcase

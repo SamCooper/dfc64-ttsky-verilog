@@ -11,10 +11,11 @@ from test_bus import _boot, _wire_bus
 
 async def _run_assembly_test(dut, asm_file):
     """Dynamically compiles and executes a single assembly test, checking full memory integrity."""
-    
+
     # 1. Path Resolution
     asm_filename = os.path.basename(asm_file)
     base_name = os.path.splitext(asm_filename)[0]
+    dut._log.info(f"Starting test: {base_name}")
     
     # The JSON should sit right next to the ASM file in the source directory
     json_file = os.path.splitext(asm_file)[0] + ".json"
