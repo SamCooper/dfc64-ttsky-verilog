@@ -19,3 +19,4 @@ test/gate_level_netlist.v
 a.out
 scratch.txt
 src/analysis.txt
+test/test_suite.testdef
