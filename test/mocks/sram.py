@@ -21,8 +21,9 @@ from mocks.bitutil import bit, byte
 
 
 class SRAM:
-    def __init__(self, low_latch, high_latch, data_out_signal, data_in_signal,
+    def __init__(self, dut, low_latch, high_latch, data_out_signal, data_in_signal,
                  control_signal, we_bit, oe_bit, size=0x10000):
+        self.dut = dut
         self._low_latch = low_latch
         self._high_latch = high_latch
         self._data_out = data_out_signal
@@ -67,9 +68,10 @@ class SRAM:
                 # Defensive check: Only write if the bus has valid 1s and 0s. 
                 # If it's full of 'Z's or 'X's, attempting to cast to int will crash.
                 if data_val.is_resolvable:
-                    self.memory[self.address] = data_val.integer
+                    print (f"Data write: {hex(self.address)} {hex(data_val.to_unsigned())}")
+                    self.memory[self.address] = data_val.to_unsigned()
                 else:
-                    self.dut._log.warning(f"Attempted to write unresolved data to RAM: {data_val}")
+                    self.dut._log.warning(f"Attempted to write unresolved data to RAM: {self.address} {data_val}")
 
             # 4. READ CYCLE
             if self._oe() == 1:

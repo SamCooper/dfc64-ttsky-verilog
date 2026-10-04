@@ -47,6 +47,7 @@ def _wire_bus(dut):
     low_latch = Latch(dut.uo_out, ALE_L, dut.uio_out)
     high_latch = Latch(dut.uo_out, ALE_H, dut.uio_out)
     sram = SRAM(
+        dut,
         low_latch,
         high_latch,
         data_out_signal=dut.uio_out,

@@ -23,17 +23,18 @@ module tt_um_samcooper_dfc64 (
     wire mre_set;
     wire [23:0] ir;
     wire [15:0] pc;
+    wire [7:0] acc_in;
+    wire [7:0] acc_out;
     wire pc_jmp;
     wire pc_inc;
-    wire ar_set_low;
-    wire ar_set_hi;
+    wire reg_a_write;
     wire ir_set;
     wire drl_set;
     wire drh_set;
 
     assign uo_out = {3'b0, mre_set, mwe_set, ai_set, ahe_set, ale_set};
     // List all unused inputs to prevent warnings
-    wire _unused = &{ena, ui_in, ar_set_low, ar_set_hi, 1'b0};
+    wire _unused = &{ena, ui_in, 1'b0};
 
     dfc64_program_counter program_counter (
       .pc_output(pc),
@@ -52,12 +53,19 @@ module tt_um_samcooper_dfc64 (
       .instruction(ir)
     );
 
+    dfc64_reg_a reg_a (
+        .rst_n(rst_n),
+        .input_enable(reg_a_write),
+        .data_input(acc_in),
+        .reg_value(acc_out)
+    );
+
     dfc64_control_unit control_unit (
       .clk(clk),
       .rst_n(rst_n),
       .uio_out(uio_out),
       .uio_oe(uio_oe),
-      .ir(ir[7:0]),
+      .ir(ir),
       .pc(pc),
       .ale_set(ale_set),
       .ahe_set(ahe_set),
@@ -66,8 +74,9 @@ module tt_um_samcooper_dfc64 (
       .mre_set(mre_set),
       .pc_jmp(pc_jmp),
       .pc_inc(pc_inc),
-      .ar_set_low(ar_set_low),
-      .ar_set_hi(ar_set_hi),
+      .reg_a_write(reg_a_write),
+      .reg_a_output(acc_out),
+      .reg_a_input(acc_in),
       .ir_set(ir_set),
       .drl_set(drl_set),
       .drh_set(drh_set)

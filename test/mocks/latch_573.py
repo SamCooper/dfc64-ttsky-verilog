@@ -34,6 +34,7 @@ class Latch:
             await First(Edge(self._control), Edge(self._data))
             await ReadOnly()
             if self._le() == 1:
+                #print(f"Latching: {hex(byte(self._data))}")
                 self.value = byte(self._data)
 
     def stop(self):

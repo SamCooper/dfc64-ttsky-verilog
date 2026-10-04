@@ -3,7 +3,7 @@ module dfc64_control_unit (
     input rst_n,   // reset_n - low to reset
     output reg [7:0] uio_out,  // IOs: Output path
     output reg [7:0] uio_oe,   // IOs: Enable path (active high: 0=input, 1=output)
-    input [7:0] ir,
+    input [23:0] ir,
     input [15:0] pc,
     output reg ale_set,
     output reg ahe_set,
@@ -12,22 +12,25 @@ module dfc64_control_unit (
     output reg mre_set,
     output reg pc_jmp,
     output reg pc_inc,
-    output reg ar_set_low,
-    output reg ar_set_hi,
+    output reg reg_a_write,
+    input [7:0] reg_a_output,
+    output reg [7:0] reg_a_input,
     output reg ir_set,
     output reg drl_set,
     output reg drh_set
 );
-    localparam FETCH_1_STAGE_1 = 4'd0;
-    localparam FETCH_1_STAGE_2 = 4'd1;
-    localparam FETCH_1_STAGE_3 = 4'd2;
-    localparam FETCH_2_STAGE_1 = 4'd3;
-    localparam FETCH_2_STAGE_2 = 4'd4;
-    localparam FETCH_2_STAGE_3 = 4'd5;
-    localparam FETCH_3_STAGE_1 = 4'd6;
-    localparam FETCH_3_STAGE_2 = 4'd7;
-    localparam FETCH_3_STAGE_3 = 4'd8;
-    localparam EXECUTE_STAGE = 4'd9;
+    localparam FETCH_1_STAGE_1 = 4'h0;
+    localparam FETCH_1_STAGE_2 = 4'h1;
+    localparam FETCH_1_STAGE_3 = 4'h2;
+    localparam FETCH_2_STAGE_1 = 4'h3;
+    localparam FETCH_2_STAGE_2 = 4'h4;
+    localparam FETCH_2_STAGE_3 = 4'h5;
+    localparam FETCH_3_STAGE_1 = 4'h6;
+    localparam FETCH_3_STAGE_2 = 4'h7;
+    localparam FETCH_3_STAGE_3 = 4'h8;
+    localparam EXECUTE_STAGE_1 = 4'h9;
+    localparam EXECUTE_STAGE_2 = 4'hA;
+    localparam EXECUTE_STAGE_3 = 4'hB;
     reg [3:0] stage;
 
     wire [7:0] op = ir[7:0]; // Your fetched opcode
@@ -38,7 +41,7 @@ module dfc64_control_unit (
 
     // 2 Extra Bytes: JSR (0x20), or ends in 9, C, D, or E
     wire needs_two_extra = (op == 8'h20) || 
-                        (op[3:0] == 4'h9) || 
+                        ((op[3:0] == 4'h9) && (op[4] == 1'b1)) || 
                         (op[3:2] == 2'b11);
 
     // Default to 1 Extra Byte
@@ -46,7 +49,7 @@ module dfc64_control_unit (
 
     always @ (posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-                // $display("Reset!");
+                $display("Reset!");
                 stage <= 3;
             end
         else begin
@@ -57,8 +60,7 @@ module dfc64_control_unit (
             mre_set <= 0;
             pc_jmp <= 0;
             pc_inc <= 0;
-            ar_set_low <= 0;
-            ar_set_hi <= 0;
+            reg_a_write <= 0;
             ir_set <= 0;
             drl_set <= 0;
             drh_set <= 0;
@@ -66,13 +68,42 @@ module dfc64_control_unit (
             if ((needs_zero_extra && (stage > FETCH_1_STAGE_3)) ||
                 (needs_one_extra && (stage > FETCH_2_STAGE_3)) ||
                 (needs_two_extra && (stage > FETCH_3_STAGE_3))) begin
-                // $display("Stage exe, z %d, 1 %d, 2 %d", needs_zero_extra, needs_one_extra, needs_two_extra);
-                stage <= EXECUTE_STAGE;
+                $display("Stage exe, z %d, 1 %d, 2 %d", needs_zero_extra, needs_one_extra, needs_two_extra);
+//                stage <= EXECUTE_STAGE_1;
 
                 case (ir[7:0])
                     OP_JMP_ABS: begin
                         pc_inc <= 0;
                         pc_jmp <= 1;
+                        stage <= FETCH_1_STAGE_1;
+                    end
+                    OP_STA_ABS: begin
+                        case (stage)
+                            default: begin
+                                $display("STA_1");
+                                uio_oe <= 8'hFF;
+                                uio_out <= ir[15:8];
+                                ale_set <= 1;
+                                stage <= EXECUTE_STAGE_2;
+                            end
+                            EXECUTE_STAGE_2: begin
+                                $display("STA_2");
+                                uio_out <= ir[23:16];
+                                ahe_set <= 1;
+                                stage <= EXECUTE_STAGE_3;
+                            end
+                            EXECUTE_STAGE_3: begin
+                                $display("STA_3");
+                                uio_out <= reg_a_output;
+                                mwe_set <= 1;
+                                pc_inc <= 1;
+                                stage <= FETCH_1_STAGE_1;
+                            end
+                        endcase
+                    end
+                    OP_LDA_IMM: begin
+                        reg_a_input <= ir[15:8];
+                        reg_a_write <= 1;
                         stage <= FETCH_1_STAGE_1;
                     end
                     default: begin
@@ -81,7 +112,7 @@ module dfc64_control_unit (
                 endcase
             end
             else begin
-                // $display("Stage %d, z %d, 1 %d, 2 %d", stage, needs_zero_extra, needs_one_extra, needs_two_extra);
+                $display("Stage %d, z %d, 1 %d, 2 %d", stage, needs_zero_extra, needs_one_extra, needs_two_extra);
 
                 case (stage)
                     FETCH_1_STAGE_1,
@@ -118,7 +149,7 @@ module dfc64_control_unit (
                         uio_oe <= 8'h00;
                         mre_set <= 1;
                         drh_set <= 1;
-                        pc_inc <= 1;
+//                        pc_inc <= 1;
                         stage <= stage + 1;
                     end
                     default: begin
