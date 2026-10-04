@@ -60,6 +60,7 @@ module tt_um_samcooper_dfc64 (
     );
 
     dfc64_reg_a reg_a (
+        .clk(clk),
         .rst_n(rst_n),
         .input_enable(reg_a_write),
         .data_input(acc_in),
@@ -67,6 +68,7 @@ module tt_um_samcooper_dfc64 (
     );
 
     dfc64_reg_x reg_x (
+        .clk(clk),
         .rst_n(rst_n),
         .input_enable(reg_x_write),
         .data_input(x_in),
@@ -74,6 +76,7 @@ module tt_um_samcooper_dfc64 (
     );
 
     dfc64_reg_y reg_y (
+        .clk(clk),
         .rst_n(rst_n),
         .input_enable(reg_y_write),
         .data_input(y_in),

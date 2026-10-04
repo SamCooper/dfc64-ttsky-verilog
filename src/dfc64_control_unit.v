@@ -82,7 +82,7 @@ module dfc64_control_unit (
 
                 case (ir[7:0])
                     OP_JMP_ABS: begin
-                        pc_inc <= 0;
+                        // pc_inc <= 0;
                         pc_jmp <= 1;
                         stage <= FETCH_1_STAGE_1;
                     end
@@ -105,7 +105,7 @@ module dfc64_control_unit (
                                 $display("STA_Z_3");
                                 uio_out <= reg_a_output;
                                 mwe_set <= 1;
-                                pc_inc <= 1;
+                                // pc_inc <= 1;
                                 stage <= FETCH_1_STAGE_1;
                             end
                         endcase
@@ -129,7 +129,7 @@ module dfc64_control_unit (
                                 $display("STX_Z_3");
                                 uio_out <= reg_x_output;
                                 mwe_set <= 1;
-                                pc_inc <= 1;
+                                // pc_inc <= 1;
                                 stage <= FETCH_1_STAGE_1;
                             end
                         endcase
@@ -153,7 +153,7 @@ module dfc64_control_unit (
                                 $display("STY_Z_3");
                                 uio_out <= reg_y_output;
                                 mwe_set <= 1;
-                                pc_inc <= 1;
+                                // pc_inc <= 1;
                                 stage <= FETCH_1_STAGE_1;
                             end
                         endcase
@@ -177,7 +177,7 @@ module dfc64_control_unit (
                                 $display("STA_3");
                                 uio_out <= reg_a_output;
                                 mwe_set <= 1;
-                                pc_inc <= 1;
+//                                pc_inc <= 1;
                                 stage <= FETCH_1_STAGE_1;
                             end
                         endcase
@@ -190,13 +190,11 @@ module dfc64_control_unit (
                     OP_LDX_IMM: begin
                         reg_x_input <= ir[15:8];
                         reg_x_write <= 1;
-                        pc_inc <= 1;
                         stage <= FETCH_1_STAGE_1;
                     end
                     OP_LDY_IMM: begin
                         reg_y_input <= ir[15:8];
                         reg_y_write <= 1;
-                        pc_inc <= 1;
                         stage <= FETCH_1_STAGE_1;
                     end
                     OP_LDA_ZP: begin
@@ -220,7 +218,7 @@ module dfc64_control_unit (
                                 mre_set <= 1;
                                 reg_a_input <= uio_in;
                                 reg_a_write <= 1;
-                                pc_inc <= 1;
+                                // pc_inc <= 1;
                                 stage <= FETCH_1_STAGE_1;
                             end
                         endcase
@@ -246,7 +244,7 @@ module dfc64_control_unit (
                                 mre_set <= 1;
                                 reg_x_input <= uio_in;
                                 reg_x_write <= 1;
-                                pc_inc <= 1;
+                                // pc_inc <= 1;
                                 stage <= FETCH_1_STAGE_1;
                             end
                         endcase
@@ -272,14 +270,14 @@ module dfc64_control_unit (
                                 mre_set <= 1;
                                 reg_y_input <= uio_in;
                                 reg_y_write <= 1;
-                                pc_inc <= 1;
+                                // pc_inc <= 1;
                                 stage <= FETCH_1_STAGE_1;
                             end
                         endcase
                     end
                     default: begin
                         $display("UNKNOWN OPCODE: %h", ir[7:0]);
-                        pc_inc <= 1;
+                        // pc_inc <= 1;
                         stage <= FETCH_1_STAGE_1;
                     end
                 endcase
@@ -322,7 +320,7 @@ module dfc64_control_unit (
                         uio_oe <= 8'h00;
                         mre_set <= 1;
                         drh_set <= 1;
-//                        pc_inc <= 1;
+                        pc_inc <= 1;
                         stage <= stage + 1;
                     end
                     default: begin
