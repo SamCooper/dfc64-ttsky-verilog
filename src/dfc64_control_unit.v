@@ -2,6 +2,7 @@ module dfc64_control_unit (
     input clk,     // clock
     input rst_n,   // reset_n - low to reset
     input [23:0] ir,
+    input [7:0]  mem_in,   // byte on the data bus (opcode being fetched)
     output reg pc_jmp,
     output reg pc_inc,
 
@@ -44,8 +45,7 @@ module dfc64_control_unit (
         // Address 0x00: Read RAM into Instruction Register (IR)
         micro_rom[8'h00] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCL, 4'b0, REG_ALE};
         micro_rom[8'h01] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCH, 4'b0, REG_AHE};
-        micro_rom[8'h02] = {UJMP_STEP,     1'b1, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_IR};
-        micro_rom[8'h03] = {UJMP_DISPATCH, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0,       4'b0, 4'b0, 4'b0};
+        micro_rom[8'h02] = {UJMP_DISPATCH, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_IR};
 
         // OP_JMP
         micro_rom[8'h10] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCL, 4'b0, REG_ALE};
@@ -80,20 +80,44 @@ module dfc64_control_unit (
         micro_rom[8'h35] = {UJMP_FETCH,    1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_A};
         
         // OP_LDX ZP
+        micro_rom[8'h36] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCL, 4'b0, REG_ALE};
+        micro_rom[8'h37] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCH, 4'b0, REG_AHE};
+        micro_rom[8'h38] = {UJMP_STEP,     1'b1, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_IR_L};
+        micro_rom[8'h39] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, 4'b0, REG_ALE};
+        micro_rom[8'h3a] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, 4'b0, REG_AHE};
+        micro_rom[8'h3b] = {UJMP_FETCH,    1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_X};
+        
+        // OP_LDY ZP
         micro_rom[8'h40] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCL, 4'b0, REG_ALE};
         micro_rom[8'h41] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCH, 4'b0, REG_AHE};
         micro_rom[8'h42] = {UJMP_STEP,     1'b1, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_IR_L};
         micro_rom[8'h43] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, 4'b0, REG_ALE};
         micro_rom[8'h44] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, 4'b0, REG_AHE};
-        micro_rom[8'h45] = {UJMP_FETCH,    1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_X};
+        micro_rom[8'h45] = {UJMP_FETCH,    1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_Y};
         
-        // OP_LDY ZP
+        // OP_LDA ZP_X
+        micro_rom[8'h46] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCL, 4'b0, REG_ALE};
+        micro_rom[8'h47] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCH, 4'b0, REG_AHE};
+        micro_rom[8'h48] = {UJMP_STEP,     1'b1, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_IR_L};
+        micro_rom[8'h49] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X, REG_ALE};
+        micro_rom[8'h4a] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, 4'b0, REG_AHE};
+        micro_rom[8'h4b] = {UJMP_FETCH,    1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_A};
+        
+        // OP_LDX ZP_Y
         micro_rom[8'h50] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCL, 4'b0, REG_ALE};
         micro_rom[8'h51] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCH, 4'b0, REG_AHE};
         micro_rom[8'h52] = {UJMP_STEP,     1'b1, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_IR_L};
-        micro_rom[8'h53] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, 4'b0, REG_ALE};
+        micro_rom[8'h53] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y, REG_ALE};
         micro_rom[8'h54] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, 4'b0, REG_AHE};
-        micro_rom[8'h55] = {UJMP_FETCH,    1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_Y};
+        micro_rom[8'h55] = {UJMP_FETCH,    1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_X};
+        
+        // OP_LDY ZP_X
+        micro_rom[8'h56] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCL, 4'b0, REG_ALE};
+        micro_rom[8'h57] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCH, 4'b0, REG_AHE};
+        micro_rom[8'h58] = {UJMP_STEP,     1'b1, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_IR_L};
+        micro_rom[8'h59] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X, REG_ALE};
+        micro_rom[8'h5a] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, 4'b0, REG_AHE};
+        micro_rom[8'h5b] = {UJMP_FETCH,    1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM, 4'b0, REG_Y};
         
         // OP_LDA ABS
         micro_rom[8'h60] = {UJMP_STEP,     1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCL, 4'b0, REG_ALE};
@@ -190,7 +214,7 @@ module dfc64_control_unit (
     // 3. THE OPCODE MAPPER (Combinational)
     // =========================================================================
     reg [7:0] dispatch_address;
-    wire [7:0] op = ir[7:0]; // Your fetched opcode
+    wire [7:0] op = mem_in; // Opcode being fetched (not yet in IR)
     
     always @(*) begin
         case (op)
@@ -199,8 +223,11 @@ module dfc64_control_unit (
             OP_LDX_IMM: dispatch_address = 8'h23;
             OP_LDY_IMM: dispatch_address = 8'h26;
             OP_LDA_ZP: dispatch_address = 8'h30;
-            OP_LDX_ZP: dispatch_address = 8'h40;
-            OP_LDY_ZP: dispatch_address = 8'h50;
+            OP_LDX_ZP: dispatch_address = 8'h36;
+            OP_LDY_ZP: dispatch_address = 8'h40;
+            OP_LDA_ZP_X: dispatch_address = 8'h46;
+            OP_LDX_ZP_Y: dispatch_address = 8'h50;
+            OP_LDY_ZP_X: dispatch_address = 8'h56;
             OP_LDA_ABS: dispatch_address = 8'h60;
             OP_LDX_ABS: dispatch_address = 8'h70;
             OP_LDY_ABS: dispatch_address = 8'h80;

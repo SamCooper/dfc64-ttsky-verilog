@@ -88,6 +88,7 @@ module tt_um_samcooper_dfc64 (
       .clk(clk),
       .rst_n(rst_n),
       .ir(ir),
+      .mem_in(uio_in),
 
       .pc_jmp(pc_jmp),
       .pc_inc(pc_inc),

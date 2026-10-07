@@ -8,7 +8,7 @@ module tb ();
 
   // Dump the signals to a FST file. You can view it with gtkwave or surfer.
   initial begin
-    $timeformat(-9, 2, " ns", 0);  // %t prints as ns, matching cocotb timestamps
+    $timeformat(-9, 2, "ns", 0);  // %t prints as ns, matching cocotb timestamps
     $dumpfile("tb.fst");
     $dumpvars(0, tb);
     #1;
