@@ -7,8 +7,10 @@ module dfc64_program_counter (
     input             inc      // increment pc on next clk edge
 );
     always @ (posedge clk or negedge rst_n) begin
-            if (!rst_n)
+            if (!rst_n) begin
                 pc_output <= 16'hFFFC;
+                $display("%0t PC %h!", $realtime, pc_output);
+            end
             else begin
                 if (jmp == 1) begin
                     $display("%0t JMP to %h!", $realtime, pc_input);

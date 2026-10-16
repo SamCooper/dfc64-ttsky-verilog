@@ -21,6 +21,7 @@ module dfc64_data_path (
     // 8-bit Data Sources
     input  wire [7:0] alu_result, // Result of a math operation
     input  wire [15:0] pc,
+    input  wire [7:0] sr,
     
     // 24-bit IR output
     output wire [23:0] ir_data,
@@ -47,6 +48,7 @@ module dfc64_data_path (
         .wdata(alu_result),  // The MUX output feeds directly in here
         .mem_in(mem_in),
         .pc(pc),
+        .sr(sr),
         .ir_data(ir_data),
         .rdata1(read_data1),
         .rdata2(read_data2)

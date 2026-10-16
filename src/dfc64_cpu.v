@@ -23,6 +23,15 @@ module tt_um_samcooper_dfc64 (
     wire mre_set;
     wire [23:0] ir;
     wire [15:0] pc;
+    wire  [7:0] sr;
+
+    wire alu_carry;
+    wire alu_zero;
+    wire alu_negative;
+
+    wire reg_sr_set;
+    wire reg_sr_full_set;
+    wire alu_sub;
     wire set_addr_c;
     wire pc_jmp;
     wire pc_inc;
@@ -49,6 +58,21 @@ module tt_um_samcooper_dfc64 (
       .inc(pc_inc)
     );
 
+    dfc64_sr status_register (
+        .clk(clk),
+        .rst_n(rst_n),
+
+        .write_enable(reg_sr_set),
+        .full_write_mode(reg_sr_full_set), // 0 = Update individual flags, 1 = Overwrite all
+        
+        .full_word_in(alu_result),     // From standard data bus (e.g., for POP instruction)
+        .alu_carry_in(alu_carry),    // From ALU
+        .alu_zero_in(alu_zero),     // From ALU
+        .alu_negative_in(alu_negative), // From ALU
+
+        .status_out(sr)
+    );
+
     dfc64_data_path data_path (
         .clk(clk),
         .rst_n(rst_n),
@@ -72,6 +96,7 @@ module tt_um_samcooper_dfc64 (
         // 8-bit Data Sources
         .alu_result(alu_result), // Result of a math operation
         .pc(pc),
+        .sr(sr),
     
         // 8-bit Outputs
         .ir_data(ir),
@@ -82,9 +107,17 @@ module tt_um_samcooper_dfc64 (
     dfc64_alu alu (
       .clk(clk),
       .rst_n(rst_n),
+
+      .sub(alu_sub),
       .set_addr_c(set_addr_c),
+
       .src_data1(mux_data1),
       .src_data2(mux_data2),
+
+      .alu_carry(alu_carry),    // From ALU
+      .alu_zero(alu_zero),     // From ALU
+      .alu_negative(alu_negative), // From ALU
+
       .result_data(alu_result)
     );
 
@@ -94,6 +127,9 @@ module tt_um_samcooper_dfc64 (
       .ir(ir),
       .mem_in(uio_in),
 
+      .reg_sr_set(reg_sr_set),
+      .reg_sr_full_set(reg_sr_full_set),
+      .alu_sub(alu_sub),
       .set_addr_c(set_addr_c),
       .pc_jmp(pc_jmp),
       .pc_inc(pc_inc),
