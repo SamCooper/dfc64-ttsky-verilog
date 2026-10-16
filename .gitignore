@@ -21,3 +21,5 @@ scratch.txt
 src/analysis.txt
 test/test_suite.testdef
 testrun.txt
+test/asm_results.json
+test/asm_tests/quick/

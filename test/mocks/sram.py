@@ -32,6 +32,7 @@ class SRAM:
         self._we_bit = we_bit
         self._oe_bit = oe_bit
         self.memory = bytearray(size)
+        self.reads = []
         self.writes = []
         self._task = cocotb.start_soon(self._run())
 
@@ -82,6 +83,7 @@ class SRAM:
                 else:
                     read_value = 0x00 # Default fallback
                 
+                self.reads.append(self.address)
                 self.dut._log.info(f"SRAM read: {hex(self.address)}")
                 self._data_in.value = read_value
             else:

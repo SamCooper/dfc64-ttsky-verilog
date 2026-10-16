@@ -15,9 +15,9 @@ Usage: python3 test/tools/update_report.py [results.json] [report.md]
 """
 import json, os, re, sys
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 REPORT = os.path.join(ROOT, "6502_test_completeness.md")
-RESULTS = os.path.join(ROOT, "asm_results.json")
+RESULTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "asm_results.json")
 
 ROW = re.compile(r"^\| \[(.)\] \| \$([0-9A-F]{2})( \(D=1\))? \| ([^|]+?) \|")
 LINK = re.compile(r"\[[a-z0-9_]+\.asm\]\(test/([a-z0-9_]+)\.asm\)")
@@ -38,7 +38,8 @@ def update(results_path=RESULTS, report_path=REPORT):
     if os.path.exists(results_path):
         with open(results_path) as f:
             results = json.load(f)
-    lines = open(report_path).read().split("\n")
+    with open(report_path) as f:
+        lines = f.read().split("\n")
 
     # 1. Apply results to the Done cells and tally by category, instruction and mode
     cats, insts, modes = [], [], {}
