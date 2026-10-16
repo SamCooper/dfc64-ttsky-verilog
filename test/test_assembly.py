@@ -47,7 +47,7 @@ async def _run_assembly_test(dut, asm_file):
     dut.rst_n.value = 1 
     
     try:
-        await with_timeout(ClockCycles(dut.clk, 300), 3, "ms")
+        await with_timeout(ClockCycles(dut.clk, 400), 4, "ms")
     except SimTimeoutError:
         pass # Expected if the assembly program ends in an infinite JMP loop
 
@@ -94,6 +94,7 @@ def create_test(asm_file_path, test_name):
 
     # 3. Apply the decorator programmatically and return the TestGenerator object
     return cocotb.test()(dynamic_test)
+
 asm_files = glob.glob("asm_tests/*.asm")
 
 for asm_file in asm_files:

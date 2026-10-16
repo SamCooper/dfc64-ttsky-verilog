@@ -5,10 +5,12 @@ parameter REG_IR_H  = 4'b0011;
 parameter REG_A     = 4'b0100;
 parameter REG_X     = 4'b0101;
 parameter REG_Y     = 4'b0110;
-parameter REG_PCL   = 4'b1000;
-parameter REG_PCH   = 4'b1001;
-parameter REG_ALE   = 4'b1010;
-parameter REG_AHE   = 4'b1011;
+parameter REG_SR    = 4'b0111;
+parameter REG_SP    = 4'b1000;
+parameter REG_PCL   = 4'b1001;
+parameter REG_PCH   = 4'b1010;
+parameter REG_ALE   = 4'b1011;
+parameter REG_AHE   = 4'b1100;
 parameter REG_MEM   = 4'b1111;
 
 module dfc64_reg_file (
@@ -28,8 +30,8 @@ module dfc64_reg_file (
     output reg [7:0]  rdata1,     // Data out 1 (goes to ALU)
     output reg [7:0]  rdata2      // Data out 2 (goes to ALU)
 );
-    // The storage array: 6 registers, each 8 bits wide
-    reg [7:0] rf [0:7];
+    // The storage array: registers, each 8 bits wide
+    reg [7:0] rf [0:9];
 
     initial begin
         rf[REG_IR] = OP_JMP_ABS;
@@ -60,11 +62,15 @@ module dfc64_reg_file (
     assign ir_data[23:16] = rf[REG_IR_H];
 
     // WRITE LOGIC (Synchronous)
-    always @(posedge clk) begin
-        // Only write if Write Enable is high AND we aren't trying to overwrite R0
-        if (rst_n && we && rd != 4'b0) begin
-            $display("%0t REG set %b %h!", $realtime, rd, wdata);
-            rf[rd] <= wdata; 
+    always @ (posedge clk or negedge rst_n) begin
+        if (!rst_n)
+            rf[REG_IR] = OP_JMP_ABS;
+        else begin
+            // Only write if Write Enable is high AND we aren't trying to overwrite R0
+            if (rst_n && we && rd != 4'b0) begin
+                $display("%0t REG set %b %h!", $realtime, rd, wdata);
+                rf[rd] <= wdata; 
+            end
         end
     end
 

@@ -23,6 +23,7 @@ module tt_um_samcooper_dfc64 (
     wire mre_set;
     wire [23:0] ir;
     wire [15:0] pc;
+    wire set_addr_c;
     wire pc_jmp;
     wire pc_inc;
 
@@ -79,6 +80,9 @@ module tt_um_samcooper_dfc64 (
     );
 
     dfc64_alu alu (
+      .clk(clk),
+      .rst_n(rst_n),
+      .set_addr_c(set_addr_c),
       .src_data1(mux_data1),
       .src_data2(mux_data2),
       .result_data(alu_result)
@@ -90,6 +94,7 @@ module tt_um_samcooper_dfc64 (
       .ir(ir),
       .mem_in(uio_in),
 
+      .set_addr_c(set_addr_c),
       .pc_jmp(pc_jmp),
       .pc_inc(pc_inc),
 
