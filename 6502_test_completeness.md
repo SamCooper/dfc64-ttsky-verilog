@@ -46,7 +46,7 @@ The [Opcode Matrix](#opcode-matrix) is a 16×16 grid that cross-checks where eac
 
 | Category | Instructions | Opcodes | Done | Failing | Remaining | % Complete |
 |----------|-------------:|--------:|-----:|--------:|----------:|-----------:|
-| [Transfer Instructions](#transfer-instructions) | 12 | 37 | 30 | 7 | 7 | 81% |
+| [Transfer Instructions](#transfer-instructions) | 12 | 37 | 37 | 0 | 0 | 100% |
 | [Stack Instructions](#stack-instructions) | 4 | 4 | 4 | 0 | 0 | 100% |
 | [Decrements & Increments](#decrements--increments) | 6 | 12 | 0 | 12 | 12 | 0% |
 | [Arithmetic Operations](#arithmetic-operations) | 2 | 16 | 0 | 16 | 16 | 0% |
@@ -58,13 +58,13 @@ The [Opcode Matrix](#opcode-matrix) is a 16×16 grid that cross-checks where eac
 | [Jumps & Subroutines](#jumps--subroutines) | 3 | 4 | 1 | 3 | 3 | 25% |
 | [Interrupts](#interrupts) | 2 | 2 | 0 | 2 | 2 | 0% |
 | [Other](#other) | 2 | 3 | 1 | 2 | 2 | 33% |
-| **Total** | **56** | **151** | **36** | **115** | **115** | **23%** |
+| **Total** | **56** | **151** | **43** | **108** | **108** | **28%** |
 
 ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can be completed first. These two rows are not included in the opcode counts above.
 
 <!-- results:start -->
 
-**Last results:** 36 passed, 117 failed, 0 not run (of 153 tests).
+**Last results:** 43 passed, 110 failed, 0 not run (of 153 tests).
 
 **Decimal mode:** 0 of 2 done (0%).
 
@@ -180,13 +180,6 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | [sec](test/asm_tests/sec.asm) | [sec] RAM mismatch at 0x1fc: Expected 0xff, got 0xfe |
 | [sed](test/asm_tests/sed.asm) | [sed] RAM mismatch at 0x1fc: Expected 0xff, got 0xf7 |
 | [sei](test/asm_tests/sei.asm) | [sei] RAM mismatch at 0x1fc: Expected 0xff, got 0xfb |
-| [sta_abs_x](test/asm_tests/sta_abs_x.asm) | [sta_abs_x] RAM mismatch at 0x10: Expected 0x3c, got 0x0 |
-| [sta_abs_y](test/asm_tests/sta_abs_y.asm) | [sta_abs_y] RAM mismatch at 0x10: Expected 0x3c, got 0x0 |
-| [sta_ind_x](test/asm_tests/sta_ind_x.asm) | [sta_ind_x] RAM mismatch at 0x1234: Expected 0x5a, got 0x0 |
-| [sta_ind_y](test/asm_tests/sta_ind_y.asm) | [sta_ind_y] RAM mismatch at 0x10: Expected 0x3c, got 0x0 |
-| [sta_zp_x](test/asm_tests/sta_zp_x.asm) | [sta_zp_x] RAM mismatch at 0x10: Expected 0xa5, got 0x0 |
-| [stx_zp_y](test/asm_tests/stx_zp_y.asm) | [stx_zp_y] RAM mismatch at 0x10: Expected 0xa5, got 0x0 |
-| [sty_zp_x](test/asm_tests/sty_zp_x.asm) | [sty_zp_x] RAM mismatch at 0x10: Expected 0xa5, got 0x0 |
 
 <!-- results:end -->
 
@@ -196,17 +189,17 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 |---------|------|--------|--------:|-----:|-----------:|
 | `A` | accumulator | `OPC A` | 4 | 0 | 0% |
 | `abs` | absolute | `OPC oper` | 23 | 7 | 30% |
-| `abs,X` | absolute,X | `OPC oper,X` | 15 | 2 | 13% |
-| `abs,Y` | absolute,Y | `OPC oper,Y` | 9 | 2 | 22% |
+| `abs,X` | absolute,X | `OPC oper,X` | 15 | 3 | 20% |
+| `abs,Y` | absolute,Y | `OPC oper,Y` | 9 | 3 | 33% |
 | `#` | immediate | `OPC #oper` | 11 | 3 | 27% |
 | `impl` | implied | `OPC` | 25 | 11 | 44% |
 | `ind` | indirect | `OPC (oper)` | 1 | 0 | 0% |
-| `X,ind` | (indirect,X) | `OPC (oper,X)` | 8 | 1 | 12% |
-| `ind,Y` | (indirect),Y | `OPC (oper),Y` | 8 | 1 | 12% |
+| `X,ind` | (indirect,X) | `OPC (oper,X)` | 8 | 2 | 25% |
+| `ind,Y` | (indirect),Y | `OPC (oper),Y` | 8 | 2 | 25% |
 | `rel` | relative | `OPC oper` | 8 | 0 | 0% |
 | `zpg` | zeropage | `OPC oper` | 21 | 6 | 28% |
-| `zpg,X` | zeropage,X | `OPC oper,X` | 16 | 2 | 12% |
-| `zpg,Y` | zeropage,Y | `OPC oper,Y` | 2 | 1 | 50% |
+| `zpg,X` | zeropage,X | `OPC oper,X` | 16 | 4 | 25% |
+| `zpg,Y` | zeropage,Y | `OPC oper,Y` | 2 | 2 | 100% |
 
 ## Instructions
 
@@ -261,42 +254,42 @@ Flags affected: `N Z`
 
 Flags affected: `-`
 
-**Progress:** 2 of 7 done (28%)
+**Progress:** 7 of 7 done (100%)
 
 > Indexed stores always take the extra cycle (no page-cross variance).
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
 | [x] | $85 | zeropage | `STA oper` | 2 | 3 | 7 | [sta_zp.asm](test/asm_tests/sta_zp.asm) / [sta_zp.json](test/asm_tests/sta_zp.json) |
-| [!] | $95 | zeropage,X | `STA oper,X` | 2 | 4 | | [sta_zp_x.asm](test/asm_tests/sta_zp_x.asm) / [sta_zp_x.json](test/asm_tests/sta_zp_x.json) |
+| [x] | $95 | zeropage,X | `STA oper,X` | 2 | 4 | 7 | [sta_zp_x.asm](test/asm_tests/sta_zp_x.asm) / [sta_zp_x.json](test/asm_tests/sta_zp_x.json) |
 | [x] | $8D | absolute | `STA oper` | 3 | 4 | 10 | [sta_abs.asm](test/asm_tests/sta_abs.asm) / [sta_abs.json](test/asm_tests/sta_abs.json) |
-| [!] | $9D | absolute,X | `STA oper,X` | 3 | 5 | | [sta_abs_x.asm](test/asm_tests/sta_abs_x.asm) / [sta_abs_x.json](test/asm_tests/sta_abs_x.json) |
-| [!] | $99 | absolute,Y | `STA oper,Y` | 3 | 5 | | [sta_abs_y.asm](test/asm_tests/sta_abs_y.asm) / [sta_abs_y.json](test/asm_tests/sta_abs_y.json) |
-| [!] | $81 | (indirect,X) | `STA (oper,X)` | 2 | 6 | | [sta_ind_x.asm](test/asm_tests/sta_ind_x.asm) / [sta_ind_x.json](test/asm_tests/sta_ind_x.json) |
-| [!] | $91 | (indirect),Y | `STA (oper),Y` | 2 | 6 | | [sta_ind_y.asm](test/asm_tests/sta_ind_y.asm) / [sta_ind_y.json](test/asm_tests/sta_ind_y.json) |
+| [x] | $9D | absolute,X | `STA oper,X` | 3 | 5 | 10 | [sta_abs_x.asm](test/asm_tests/sta_abs_x.asm) / [sta_abs_x.json](test/asm_tests/sta_abs_x.json) |
+| [x] | $99 | absolute,Y | `STA oper,Y` | 3 | 5 | 10 | [sta_abs_y.asm](test/asm_tests/sta_abs_y.asm) / [sta_abs_y.json](test/asm_tests/sta_abs_y.json) |
+| [x] | $81 | (indirect,X) | `STA (oper,X)` | 2 | 6 | 12 | [sta_ind_x.asm](test/asm_tests/sta_ind_x.asm) / [sta_ind_x.json](test/asm_tests/sta_ind_x.json) |
+| [x] | $91 | (indirect),Y | `STA (oper),Y` | 2 | 6 | 12 | [sta_ind_y.asm](test/asm_tests/sta_ind_y.asm) / [sta_ind_y.json](test/asm_tests/sta_ind_y.json) |
 
 #### STX: Store Index X in Memory
 
 Flags affected: `-`
 
-**Progress:** 2 of 3 done (66%)
+**Progress:** 3 of 3 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
 | [x] | $86 | zeropage | `STX oper` | 2 | 3 | 7 | [stx_zp.asm](test/asm_tests/stx_zp.asm) / [stx_zp.json](test/asm_tests/stx_zp.json) |
-| [!] | $96 | zeropage,Y | `STX oper,Y` | 2 | 4 | | [stx_zp_y.asm](test/asm_tests/stx_zp_y.asm) / [stx_zp_y.json](test/asm_tests/stx_zp_y.json) |
+| [x] | $96 | zeropage,Y | `STX oper,Y` | 2 | 4 | 7 | [stx_zp_y.asm](test/asm_tests/stx_zp_y.asm) / [stx_zp_y.json](test/asm_tests/stx_zp_y.json) |
 | [x] | $8E | absolute | `STX oper` | 3 | 4 | 10 | [stx_abs.asm](test/asm_tests/stx_abs.asm) / [stx_abs.json](test/asm_tests/stx_abs.json) |
 
 #### STY: Store Index Y in Memory
 
 Flags affected: `-`
 
-**Progress:** 2 of 3 done (66%)
+**Progress:** 3 of 3 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
 | [x] | $84 | zeropage | `STY oper` | 2 | 3 | 7 | [sty_zp.asm](test/asm_tests/sty_zp.asm) / [sty_zp.json](test/asm_tests/sty_zp.json) |
-| [!] | $94 | zeropage,X | `STY oper,X` | 2 | 4 | | [sty_zp_x.asm](test/asm_tests/sty_zp_x.asm) / [sty_zp_x.json](test/asm_tests/sty_zp_x.json) |
+| [x] | $94 | zeropage,X | `STY oper,X` | 2 | 4 | 7 | [sty_zp_x.asm](test/asm_tests/sty_zp_x.asm) / [sty_zp_x.json](test/asm_tests/sty_zp_x.json) |
 | [x] | $8C | absolute | `STY oper` | 3 | 4 | 10 | [sty_abs.asm](test/asm_tests/sty_abs.asm) / [sty_abs.json](test/asm_tests/sty_abs.json) |
 
 #### TAX: Transfer Accumulator to Index X
