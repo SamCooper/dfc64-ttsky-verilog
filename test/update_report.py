@@ -20,7 +20,7 @@ REPORT = os.path.join(ROOT, "6502_test_completeness.md")
 RESULTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "asm_results.json")
 
 ROW = re.compile(r"^\| \[(.)\] \| \$([0-9A-F]{2})( \(D=1\))? \| ([^|]+?) \|")
-LINK = re.compile(r"\[[a-z0-9_]+\.asm\]\(test/([a-z0-9_]+)\.asm\)")
+LINK = re.compile(r"\[[A-Za-z0-9_]+\.asm\]\(test/asm_tests/([A-Za-z0-9_]+)\.asm\)")
 START, END = "<!-- results:start -->", "<!-- results:end -->"
 PROGRESS = "**Progress:**"
 
@@ -43,6 +43,7 @@ def update(results_path=RESULTS, report_path=REPORT):
 
     # 1. Apply results to the Done cells and tally by category, instruction and mode
     cats, insts, modes = [], [], {}
+    linked = set()   # test names that have a row in the report
     in_ins = False
     for i, line in enumerate(lines):
         if line.startswith("## "):
@@ -63,6 +64,8 @@ def update(results_path=RESULTS, report_path=REPORT):
         mark, decimal, mode = m.group(1), bool(m.group(3)), m.group(4).strip()
         link = LINK.search(line)
         r = results.get(link.group(1)) if link else None
+        if link:
+            linked.add(link.group(1))
         if r:
             mark = "x" if r["status"] == "pass" else "!"
             lines[i] = line[:3] + mark + line[4:]
@@ -130,6 +133,7 @@ def update(results_path=RESULTS, report_path=REPORT):
     dec = sum(c["dec"] for c in cats)
     dec_done = sum(c["dec_done"] for c in cats)
     tests_in_report = tot["ops"] + dec
+    results = {t: r for t, r in results.items() if t in linked}   # ignore stale/unlinked results
     passed = sorted(t for t, r in results.items() if r["status"] == "pass")
     failed = sorted(t for t, r in results.items() if r["status"] != "pass")
     block = [START, ""]
@@ -149,7 +153,7 @@ def update(results_path=RESULTS, report_path=REPORT):
             reason = (msg[0] if msg else "").replace("|", "\\|")
             if len(reason) > 160:
                 reason = reason[:157] + "..."
-            block.append(f"| [{t}](test/{t}.asm) | {reason} |")
+            block.append(f"| [{t}](test/asm_tests/{t}.asm) | {reason} |")
     block += ["", END]
     if START in lines:
         a, b = lines.index(START), lines.index(END)

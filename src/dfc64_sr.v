@@ -20,6 +20,8 @@ module dfc64_sr (
         end else if (write_enable) begin            
             if (full_write_mode) begin
                 status_out <= full_word_in;                
+                status_out[5] <= 1;
+                status_out[4] <= 1;
                 $display("%0t SR full set %h!", $realtime, full_word_in);
             end else begin
                 $display("%0t SR set C%b Z%b N%b!", $realtime, alu_carry_in, alu_zero_in, alu_negative_in);
