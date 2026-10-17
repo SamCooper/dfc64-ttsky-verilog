@@ -1,0 +1,22 @@
+    end
+
+    // =========================================================================
+    // 3. THE OPCODE MAPPER (Combinational)
+    // =========================================================================
+    wire [7:0] op = (micro_pc == 8'h02) ? mem_in : ir[7:0]; // Opcode being fetched (not yet in IR)
+    
+   // 0 Extra Bytes: BRK/RTI/RTS, or ends in 8 or A
+    wire needs_zero_extra = (op == 8'h00) || (op == 8'h40) || (op == 8'h60) || 
+                            ({op[3], op[2], op[0]} == 3'b100);
+
+    // 2 Extra Bytes: JSR (0x20), or ends in 9, C, D, or E
+    wire needs_two_extra = (op == 8'h20) || 
+                        ((op[3:0] == 4'h9) && (op[4] == 1'b1)) || 
+                        (op[3:2] == 2'b11);
+
+    // Default to 1 Extra Byte
+    wire needs_one_extra = !(needs_two_extra || needs_zero_extra);
+
+    always @(*) begin
+        if (needs_zero_extra) begin
+            case (op)

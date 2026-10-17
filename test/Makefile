@@ -49,3 +49,16 @@ SIM_CMD_PREFIX ?= stdbuf -oL -eL
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim
+
+# The control unit is generated from src/fragments/, src/opcode_stages.json and
+# src/dfc64_opcodes.v; regenerate it before the RTL is compiled. (These rules come after the include so
+# that cocotb's default target stays the first one.) The generator leaves the file
+# alone when its content is unchanged, so an unchanged control unit is not rebuilt.
+CONTROL_UNIT_GEN = $(SRC_DIR)/dfc64_control_unit.v
+CONTROL_UNIT_DEPS = $(SRC_DIR)/gen_control_unit.py $(SRC_DIR)/opcode_stages.json \
+                    $(SRC_DIR)/dfc64_opcodes.v $(wildcard $(SRC_DIR)/fragments/*)
+
+$(CONTROL_UNIT_GEN): $(CONTROL_UNIT_DEPS)
+	python3 $(SRC_DIR)/gen_control_unit.py
+
+$(SIM_BUILD)/sim.vvp: $(CONTROL_UNIT_GEN)

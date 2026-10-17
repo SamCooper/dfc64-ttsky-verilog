@@ -1,0 +1,45 @@
+                    
+                    // If unknown opcode, route to an error handler or back to fetch
+                    default: begin
+                        dispatch_address = 8'h00; 
+                    end
+                endcase
+            end
+        end
+    end
+
+    // =========================================================================
+    // 4. THE MICRO-SEQUENCER (Clocked)
+    // =========================================================================
+    // Read the current micro-word out of the ROM
+    wire [MICRO_ROM_WORD_SIZE-1:0] current_micro_word = micro_rom[micro_pc];
+    
+    // Extract the uJump command from the top 3 bits
+    wire [2:0] uJump = current_micro_word[MICRO_ROM_WORD_SIZE-1:MICRO_ROM_WORD_SIZE-3];
+
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            $display("%0t Reset!", $realtime);
+            micro_pc <= RESET_MICRO_PC; // On power-up, start at the Fetch Routine
+        end else begin
+            $display("%0t Stage: %b %b %h %h %h", $realtime, current_micro_word, uJump, micro_pc, op, dispatch_address);
+            case (uJump)
+                UJMP_STEP:     micro_pc <= micro_pc + 1;
+                UJMP_DISPATCH_1: begin
+                    micro_pc <= (needs_zero_extra) ? dispatch_address : micro_pc + 1;
+                end
+                UJMP_DISPATCH_2: begin
+                    micro_pc <= (needs_one_extra) ? dispatch_address : micro_pc + 1;
+                end
+                UJMP_DISPATCH_3: begin
+                    micro_pc <= (needs_two_extra) ? dispatch_address : micro_pc + 1;
+                end
+                UJMP_FETCH:    micro_pc <= 8'h00;
+                default:       micro_pc <= 8'h00;
+            endcase
+        end
+    end
+
+    // =========================================================================
+    // 5. OUTPUT LOGIC (Combinational slicing)
+    // =========================================================================

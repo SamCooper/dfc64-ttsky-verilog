@@ -4,6 +4,8 @@ Usage: python3 test/tools/update_report.py [results.json] [report.md]
 
 - Done cells: [x] = passed, [!] = failed. Rows whose test was not in the results
   keep their current mark (so manual marks such as [~] survive until the test runs).
+- The DFC64 Cycles column is filled from src/opcode_cycles.json (written by
+  src/gen_control_unit.py); rows whose opcode is not in it keep their current cell.
 - Rows are matched to results through the .asm link in their Test Case column.
 - Rebuilt from the Done cells:
     Summary table (Done / Failing / Remaining / % Complete per category, and a total),
@@ -18,6 +20,8 @@ import json, os, re, sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 REPORT = os.path.join(ROOT, "6502_test_completeness.md")
 RESULTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "asm_results.json")
+CYCLES = os.path.join(ROOT, "src", "opcode_cycles.json")
+CYCLES_COLUMN = 7    # index of the DFC64 Cycles cell when a row is split on "|"
 
 ROW = re.compile(r"^\| \[(.)\] \| \$([0-9A-F]{2})( \(D=1\))? \| ([^|]+?) \|")
 LINK = re.compile(r"\[[A-Za-z0-9_]+\.asm\]\(test/asm_tests/([A-Za-z0-9_]+)\.asm\)")
@@ -33,8 +37,12 @@ def pct(done, total):
     return f"{done * 100 // total}%" if total else "-"   # rounded down: 100% only when all done
 
 
-def update(results_path=RESULTS, report_path=REPORT):
+def update(results_path=RESULTS, report_path=REPORT, cycles_path=CYCLES):
     results = {}
+    cycles = {}
+    if os.path.exists(cycles_path):
+        with open(cycles_path) as f:
+            cycles = json.load(f)
     if os.path.exists(results_path):
         with open(results_path) as f:
             results = json.load(f)
@@ -62,6 +70,11 @@ def update(results_path=RESULTS, report_path=REPORT):
         if not m:
             continue
         mark, decimal, mode = m.group(1), bool(m.group(3)), m.group(4).strip()
+        entry = cycles.get(m.group(2))
+        cells = line.split("|")
+        if entry and len(cells) == CYCLES_COLUMN + 3:
+            cells[CYCLES_COLUMN] = f" {entry['cycles']} "
+            line = lines[i] = "|".join(cells)
         link = LINK.search(line)
         r = results.get(link.group(1)) if link else None
         if link:
@@ -138,10 +151,8 @@ def update(results_path=RESULTS, report_path=REPORT):
     failed = sorted(t for t, r in results.items() if r["status"] != "pass")
     block = [START, ""]
     if results:
-        last = max(r.get("time", "") for r in results.values())
         block.append(f"**Last results:** {len(passed)} passed, {len(failed)} failed, "
-                     f"{tests_in_report - len(results)} not run (of {tests_in_report} tests). "
-                     f"Most recent test run: {last}.")
+                     f"{tests_in_report - len(results)} not run (of {tests_in_report} tests).")
     else:
         block.append("**Last results:** no test results yet. Run the cocotb suite (test_asm.py) "
                      "or `python3 test/tools/update_report.py` after a run.")
