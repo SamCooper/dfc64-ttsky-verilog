@@ -222,13 +222,13 @@ Flags affected: `N Z`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $A9 | immediate | `LDA #oper` | 2 | 2 | 7 | [lda_imm.asm](test/asm_tests/lda_imm.asm) / [lda_imm.json](test/asm_tests/lda_imm.json) |
-| [x] | $A5 | zeropage | `LDA oper` | 2 | 3 | 9 | [lda_zp.asm](test/asm_tests/lda_zp.asm) / [lda_zp.json](test/asm_tests/lda_zp.json) |
-| [x] | $B5 | zeropage,X | `LDA oper,X` | 2 | 4 | 9 | [lda_zp_x.asm](test/asm_tests/lda_zp_x.asm) / [lda_zp_x.json](test/asm_tests/lda_zp_x.json) |
-| [x] | $AD | absolute | `LDA oper` | 3 | 4 | 12 | [lda_abs.asm](test/asm_tests/lda_abs.asm) / [lda_abs.json](test/asm_tests/lda_abs.json) |
-| [x] | $BD | absolute,X | `LDA oper,X` | 3 | 4* | 12 | [lda_abs_x.asm](test/asm_tests/lda_abs_x.asm) / [lda_abs_x.json](test/asm_tests/lda_abs_x.json) |
-| [x] | $B9 | absolute,Y | `LDA oper,Y` | 3 | 4* | 12 | [lda_abs_y.asm](test/asm_tests/lda_abs_y.asm) / [lda_abs_y.json](test/asm_tests/lda_abs_y.json) |
-| [!] | $A1 | (indirect,X) | `LDA (oper,X)` | 2 | 6 | | [lda_ind_x.asm](test/asm_tests/lda_ind_x.asm) / [lda_ind_x.json](test/asm_tests/lda_ind_x.json) |
+| [x] | $A9 | immediate | `LDA #oper` | 2 | 2 | 6 | [lda_imm.asm](test/asm_tests/lda_imm.asm) / [lda_imm.json](test/asm_tests/lda_imm.json) |
+| [x] | $A5 | zeropage | `LDA oper` | 2 | 3 | 8 | [lda_zp.asm](test/asm_tests/lda_zp.asm) / [lda_zp.json](test/asm_tests/lda_zp.json) |
+| [x] | $B5 | zeropage,X | `LDA oper,X` | 2 | 4 | 8 | [lda_zp_x.asm](test/asm_tests/lda_zp_x.asm) / [lda_zp_x.json](test/asm_tests/lda_zp_x.json) |
+| [x] | $AD | absolute | `LDA oper` | 3 | 4 | 10 | [lda_abs.asm](test/asm_tests/lda_abs.asm) / [lda_abs.json](test/asm_tests/lda_abs.json) |
+| [x] | $BD | absolute,X | `LDA oper,X` | 3 | 4* | 10 | [lda_abs_x.asm](test/asm_tests/lda_abs_x.asm) / [lda_abs_x.json](test/asm_tests/lda_abs_x.json) |
+| [x] | $B9 | absolute,Y | `LDA oper,Y` | 3 | 4* | 10 | [lda_abs_y.asm](test/asm_tests/lda_abs_y.asm) / [lda_abs_y.json](test/asm_tests/lda_abs_y.json) |
+| [!] | $A1 | (indirect,X) | `LDA (oper,X)` | 2 | 6 | 9 | [lda_ind_x.asm](test/asm_tests/lda_ind_x.asm) / [lda_ind_x.json](test/asm_tests/lda_ind_x.json) |
 | [!] | $B1 | (indirect),Y | `LDA (oper),Y` | 2 | 5* | | [lda_ind_y.asm](test/asm_tests/lda_ind_y.asm) / [lda_ind_y.json](test/asm_tests/lda_ind_y.json) |
 
 #### LDX: Load Index X with Memory
@@ -239,11 +239,11 @@ Flags affected: `N Z`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $A2 | immediate | `LDX #oper` | 2 | 2 | 7 | [ldx_imm.asm](test/asm_tests/ldx_imm.asm) / [ldx_imm.json](test/asm_tests/ldx_imm.json) |
-| [x] | $A6 | zeropage | `LDX oper` | 2 | 3 | 9 | [ldx_zp.asm](test/asm_tests/ldx_zp.asm) / [ldx_zp.json](test/asm_tests/ldx_zp.json) |
-| [x] | $B6 | zeropage,Y | `LDX oper,Y` | 2 | 4 | 9 | [ldx_zp_y.asm](test/asm_tests/ldx_zp_y.asm) / [ldx_zp_y.json](test/asm_tests/ldx_zp_y.json) |
-| [x] | $AE | absolute | `LDX oper` | 3 | 4 | 12 | [ldx_abs.asm](test/asm_tests/ldx_abs.asm) / [ldx_abs.json](test/asm_tests/ldx_abs.json) |
-| [x] | $BE | absolute,Y | `LDX oper,Y` | 3 | 4* | 12 | [ldx_abs_y.asm](test/asm_tests/ldx_abs_y.asm) / [ldx_abs_y.json](test/asm_tests/ldx_abs_y.json) |
+| [x] | $A2 | immediate | `LDX #oper` | 2 | 2 | 6 | [ldx_imm.asm](test/asm_tests/ldx_imm.asm) / [ldx_imm.json](test/asm_tests/ldx_imm.json) |
+| [x] | $A6 | zeropage | `LDX oper` | 2 | 3 | 8 | [ldx_zp.asm](test/asm_tests/ldx_zp.asm) / [ldx_zp.json](test/asm_tests/ldx_zp.json) |
+| [x] | $B6 | zeropage,Y | `LDX oper,Y` | 2 | 4 | 8 | [ldx_zp_y.asm](test/asm_tests/ldx_zp_y.asm) / [ldx_zp_y.json](test/asm_tests/ldx_zp_y.json) |
+| [x] | $AE | absolute | `LDX oper` | 3 | 4 | 10 | [ldx_abs.asm](test/asm_tests/ldx_abs.asm) / [ldx_abs.json](test/asm_tests/ldx_abs.json) |
+| [x] | $BE | absolute,Y | `LDX oper,Y` | 3 | 4* | 10 | [ldx_abs_y.asm](test/asm_tests/ldx_abs_y.asm) / [ldx_abs_y.json](test/asm_tests/ldx_abs_y.json) |
 
 #### LDY: Load Index Y with Memory
 
@@ -253,11 +253,11 @@ Flags affected: `N Z`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $A0 | immediate | `LDY #oper` | 2 | 2 | 7 | [ldy_imm.asm](test/asm_tests/ldy_imm.asm) / [ldy_imm.json](test/asm_tests/ldy_imm.json) |
-| [x] | $A4 | zeropage | `LDY oper` | 2 | 3 | 9 | [ldy_zp.asm](test/asm_tests/ldy_zp.asm) / [ldy_zp.json](test/asm_tests/ldy_zp.json) |
-| [x] | $B4 | zeropage,X | `LDY oper,X` | 2 | 4 | 9 | [ldy_zp_x.asm](test/asm_tests/ldy_zp_x.asm) / [ldy_zp_x.json](test/asm_tests/ldy_zp_x.json) |
-| [x] | $AC | absolute | `LDY oper` | 3 | 4 | 12 | [ldy_abs.asm](test/asm_tests/ldy_abs.asm) / [ldy_abs.json](test/asm_tests/ldy_abs.json) |
-| [x] | $BC | absolute,X | `LDY oper,X` | 3 | 4* | 12 | [ldy_abs_x.asm](test/asm_tests/ldy_abs_x.asm) / [ldy_abs_x.json](test/asm_tests/ldy_abs_x.json) |
+| [x] | $A0 | immediate | `LDY #oper` | 2 | 2 | 6 | [ldy_imm.asm](test/asm_tests/ldy_imm.asm) / [ldy_imm.json](test/asm_tests/ldy_imm.json) |
+| [x] | $A4 | zeropage | `LDY oper` | 2 | 3 | 8 | [ldy_zp.asm](test/asm_tests/ldy_zp.asm) / [ldy_zp.json](test/asm_tests/ldy_zp.json) |
+| [x] | $B4 | zeropage,X | `LDY oper,X` | 2 | 4 | 8 | [ldy_zp_x.asm](test/asm_tests/ldy_zp_x.asm) / [ldy_zp_x.json](test/asm_tests/ldy_zp_x.json) |
+| [x] | $AC | absolute | `LDY oper` | 3 | 4 | 10 | [ldy_abs.asm](test/asm_tests/ldy_abs.asm) / [ldy_abs.json](test/asm_tests/ldy_abs.json) |
+| [x] | $BC | absolute,X | `LDY oper,X` | 3 | 4* | 10 | [ldy_abs_x.asm](test/asm_tests/ldy_abs_x.asm) / [ldy_abs_x.json](test/asm_tests/ldy_abs_x.json) |
 
 #### STA: Store Accumulator in Memory
 
@@ -269,9 +269,9 @@ Flags affected: `-`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $85 | zeropage | `STA oper` | 2 | 3 | 9 | [sta_zp.asm](test/asm_tests/sta_zp.asm) / [sta_zp.json](test/asm_tests/sta_zp.json) |
+| [x] | $85 | zeropage | `STA oper` | 2 | 3 | 8 | [sta_zp.asm](test/asm_tests/sta_zp.asm) / [sta_zp.json](test/asm_tests/sta_zp.json) |
 | [!] | $95 | zeropage,X | `STA oper,X` | 2 | 4 | | [sta_zp_x.asm](test/asm_tests/sta_zp_x.asm) / [sta_zp_x.json](test/asm_tests/sta_zp_x.json) |
-| [x] | $8D | absolute | `STA oper` | 3 | 4 | 12 | [sta_abs.asm](test/asm_tests/sta_abs.asm) / [sta_abs.json](test/asm_tests/sta_abs.json) |
+| [x] | $8D | absolute | `STA oper` | 3 | 4 | 10 | [sta_abs.asm](test/asm_tests/sta_abs.asm) / [sta_abs.json](test/asm_tests/sta_abs.json) |
 | [!] | $9D | absolute,X | `STA oper,X` | 3 | 5 | | [sta_abs_x.asm](test/asm_tests/sta_abs_x.asm) / [sta_abs_x.json](test/asm_tests/sta_abs_x.json) |
 | [!] | $99 | absolute,Y | `STA oper,Y` | 3 | 5 | | [sta_abs_y.asm](test/asm_tests/sta_abs_y.asm) / [sta_abs_y.json](test/asm_tests/sta_abs_y.json) |
 | [!] | $81 | (indirect,X) | `STA (oper,X)` | 2 | 6 | | [sta_ind_x.asm](test/asm_tests/sta_ind_x.asm) / [sta_ind_x.json](test/asm_tests/sta_ind_x.json) |
@@ -285,9 +285,9 @@ Flags affected: `-`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $86 | zeropage | `STX oper` | 2 | 3 | 9 | [stx_zp.asm](test/asm_tests/stx_zp.asm) / [stx_zp.json](test/asm_tests/stx_zp.json) |
+| [x] | $86 | zeropage | `STX oper` | 2 | 3 | 8 | [stx_zp.asm](test/asm_tests/stx_zp.asm) / [stx_zp.json](test/asm_tests/stx_zp.json) |
 | [!] | $96 | zeropage,Y | `STX oper,Y` | 2 | 4 | | [stx_zp_y.asm](test/asm_tests/stx_zp_y.asm) / [stx_zp_y.json](test/asm_tests/stx_zp_y.json) |
-| [x] | $8E | absolute | `STX oper` | 3 | 4 | 12 | [stx_abs.asm](test/asm_tests/stx_abs.asm) / [stx_abs.json](test/asm_tests/stx_abs.json) |
+| [x] | $8E | absolute | `STX oper` | 3 | 4 | 10 | [stx_abs.asm](test/asm_tests/stx_abs.asm) / [stx_abs.json](test/asm_tests/stx_abs.json) |
 
 #### STY: Store Index Y in Memory
 
@@ -297,9 +297,9 @@ Flags affected: `-`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $84 | zeropage | `STY oper` | 2 | 3 | 9 | [sty_zp.asm](test/asm_tests/sty_zp.asm) / [sty_zp.json](test/asm_tests/sty_zp.json) |
+| [x] | $84 | zeropage | `STY oper` | 2 | 3 | 8 | [sty_zp.asm](test/asm_tests/sty_zp.asm) / [sty_zp.json](test/asm_tests/sty_zp.json) |
 | [!] | $94 | zeropage,X | `STY oper,X` | 2 | 4 | | [sty_zp_x.asm](test/asm_tests/sty_zp_x.asm) / [sty_zp_x.json](test/asm_tests/sty_zp_x.json) |
-| [x] | $8C | absolute | `STY oper` | 3 | 4 | 12 | [sty_abs.asm](test/asm_tests/sty_abs.asm) / [sty_abs.json](test/asm_tests/sty_abs.json) |
+| [x] | $8C | absolute | `STY oper` | 3 | 4 | 10 | [sty_abs.asm](test/asm_tests/sty_abs.asm) / [sty_abs.json](test/asm_tests/sty_abs.json) |
 
 #### TAX: Transfer Accumulator to Index X
 
@@ -839,7 +839,7 @@ Flags affected: `-`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $4C | absolute | `JMP oper` | 3 | 3 | 10 | [jmp_abs.asm](test/asm_tests/jmp_abs.asm) / [jmp_abs.json](test/asm_tests/jmp_abs.json) |
+| [x] | $4C | absolute | `JMP oper` | 3 | 3 | 8 | [jmp_abs.asm](test/asm_tests/jmp_abs.asm) / [jmp_abs.json](test/asm_tests/jmp_abs.json) |
 | [!] | $6C | indirect | `JMP (oper)` | 3 | 5*** | | [jmp_ind.asm](test/asm_tests/jmp_ind.asm) / [jmp_ind.json](test/asm_tests/jmp_ind.json) |
 
 #### JSR: Jump to New Location Saving Return Address
