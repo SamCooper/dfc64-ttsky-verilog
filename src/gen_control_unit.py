@@ -48,6 +48,8 @@ FIELDS = [
     Field("reg_sr_full_set", 1, "false",     True),
     Field("alu_sub",         1, "false",     True),
     Field("set_addr_c",      1, "false",     True),
+    Field("al_inc",          1, "false",     True),
+    Field("zp_clr_set",      1, "false",     True),
     Field("pc_inc",          1, "false",     True),
     Field("pc_jmp",          1, "false",     True),
     Field("write_en",        1, "false",     True),

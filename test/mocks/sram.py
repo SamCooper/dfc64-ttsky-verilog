@@ -1,13 +1,12 @@
 """Async model of a generic byte-addressable SRAM.
 
-Wired the way the PCB wires a real chip: address comes from a pair of
-Latch573 mocks (holding A0-A7 / A8-A15), data is exchanged over the
-ASIC's uio bus, and WE/OE are active-HIGH strobe bits carried on the
-ASIC's control bus (uo_out) -- matching this design's "_set" convention
-(ale_set, ahe_set, mwe_set, mre_set, ...: asserted when the bit is 1).
-Writes are captured continuously while WE is high (so the byte present
-on the bus when WE falls is what "sticks", matching a real SRAM's
-write-cycle timing). Reads drive the bus continuously while OE is high.
+Wired the way the PCB wires a real chip: address comes from the cascaded
+74HC163 `Latch` mocks (holding A0-A7 / A8-A15), data is exchanged over the
+ASIC's uio bus, and WE_n/OE_n are the ASIC's active-LOW output pins
+(uo_out), wired straight to the chip. An X/Z pin is not asserted.
+Writes are captured continuously while WE_n is low (so the byte present
+on the bus when WE_n rises is what "sticks", matching a real SRAM's
+write-cycle timing). Reads drive the bus continuously while OE_n is low.
 
 Note: triggers are registered on the whole control bus signal, not
 bit-selects -- Icarus Verilog's VPI cannot register value-change
@@ -17,20 +16,20 @@ callbacks on part-selects of a vector, only on the vector itself.
 import cocotb
 from cocotb.triggers import Edge, Timer, First
 from cocotb.types import LogicArray
-from mocks.bitutil import bit, byte
+from mocks.bitutil import asserted_low, bit, byte
 
 
 class SRAM:
     def __init__(self, dut, low_latch, high_latch, data_out_signal, data_in_signal,
-                 control_signal, we_bit, oe_bit, size=0x10000):
+                 control_signal, we_n_bit, oe_n_bit, size=0x10000):
         self.dut = dut
         self._low_latch = low_latch
         self._high_latch = high_latch
         self._data_out = data_out_signal
         self._data_in = data_in_signal
         self._control = control_signal
-        self._we_bit = we_bit
-        self._oe_bit = oe_bit
+        self._we_n_bit = we_n_bit
+        self._oe_n_bit = oe_n_bit
         self.memory = bytearray(size)
         self.reads = []
         self.writes = []
@@ -41,10 +40,12 @@ class SRAM:
         return (self._high_latch.value << 8) | self._low_latch.value
 
     def _we(self):
-        return bit(self._control, self._we_bit)
+        """1 while WE_n is asserted (low); X/Z is not asserted."""
+        return 1 if asserted_low(self._control, self._we_n_bit) else 0
 
     def _oe(self):
-        return bit(self._control, self._oe_bit)
+        """1 while OE_n is asserted (low); X/Z is not asserted."""
+        return 1 if asserted_low(self._control, self._oe_n_bit) else 0
 
     async def _run(self):
         while True:

@@ -3,11 +3,12 @@
 
 """Bus test suite implementing test/features/bus_latching.feature.
 
-Pin mapping (per src/project.v's `assign uo_out = {3'b0, mre_set, mwe_set,
-ai_set, ahe_set, ale_set}`), all active-HIGH strobes matching this design's
-"_set" convention (asserted when the bit is 1):
-    uo_out[0] = ALE_L (ale_set)   uo_out[1] = ALE_H (ahe_set)
-    uo_out[3] = MEM_WE (mwe_set) uo_out[4] = MEM_OE (mre_set)
+Pin mapping (per the `assign uo_out` in src/dfc64_cpu.v). The pins are wired
+straight to the 74HC163 address counters and the memory, so they have the
+chips' polarities (active LOW unless noted):
+    uo_out[0] = LOAD_L_n (PE_n, lower counters)   uo_out[1] = LOAD_H_n (PE_n, upper)
+    uo_out[2] = ADDR_INC (CEP, active HIGH)       uo_out[3] = MEM_WE_n
+    uo_out[4] = MEM_OE_n                          uo_out[5] = ZP_CLR_n (SR_n, upper)
 
 Drives/observes only real TT pins (ui_in, uo_out, uio_in, uio_out, clk,
 rst_n, ena), per CLAUDE.md, so this suite is unchanged when later run
@@ -18,15 +19,16 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, Edge, SimTimeoutError, with_timeout
 
-from mocks.bitutil import bit, byte
+from mocks.bitutil import asserted_low, bit, byte
 from mocks.latch_163 import Latch
 from mocks.sram import SRAM
 
-ALE_L = 0
-ALE_H = 1
-ALE_I = 2
-MEM_WE = 3
-MEM_OE = 4
+LOAD_L_N = 0
+LOAD_H_N = 1
+ADDR_INC = 2
+MEM_WE_N = 3
+MEM_OE_N = 4
+ZP_CLR_N = 5
 
 RESET_VECTOR = 0xFFFC
 
@@ -44,8 +46,11 @@ async def _boot(dut):
 
 def _wire_bus(dut):
     """Given: instantiate the off-chip latches + SRAM, wired to the DUT's pins."""
-    low_latch = Latch(dut.clk, dut.uo_out, ALE_L, dut.uio_out)
-    high_latch = Latch(dut.clk, dut.uo_out, ALE_H, dut.uio_out)
+    # Four cascaded 74HC163s: ADDR_INC increments the 16-bit address, carrying across
+    # bytes; ZP_CLR_n synchronously clears the upper byte.
+    low_latch = Latch(dut.clk, dut.uo_out, LOAD_L_N, dut.uio_out, cep_bit=ADDR_INC)
+    high_latch = Latch(dut.clk, dut.uo_out, LOAD_H_N, dut.uio_out, cep_bit=ADDR_INC,
+                       sr_n_bit=ZP_CLR_N, carry_in=low_latch)
     sram = SRAM(
         dut,
         low_latch,
@@ -53,16 +58,16 @@ def _wire_bus(dut):
         data_out_signal=dut.uio_out,
         data_in_signal=dut.uio_in,
         control_signal=dut.uo_out,
-        we_bit=MEM_WE,
-        oe_bit=MEM_OE,
+        we_n_bit=MEM_WE_N,
+        oe_n_bit=MEM_OE_N,
     )
     return low_latch, high_latch, sram
 
 
-async def _watch_rising_bit(control_signal, bit_index, on_rise):
+async def _watch_asserted_low_bit(control_signal, bit_index, on_assert):
     """Repeatedly waits for `control_signal` (a whole vector) to change and
-    calls `on_rise()` whenever the given bit rises 0->1 (this design's
-    "_set" signals -- e.g. mwe_set, mre_set -- are active-high strobes).
+    calls `on_assert()` whenever the given active-low pin is asserted, i.e. the
+    bit falls 1->0 (e.g. MEM_WE_n, MEM_OE_n).
 
     Icarus Verilog's VPI can't register value-change callbacks on
     bit-selects of a vector, so bit edges are detected in Python off
@@ -72,8 +77,8 @@ async def _watch_rising_bit(control_signal, bit_index, on_rise):
     while True:
         await Edge(control_signal)
         current = bit(control_signal, bit_index)
-        if previous == 0 and current == 1:
-            on_rise()
+        if previous == 1 and current == 0 and asserted_low(control_signal, bit_index):
+            on_assert()
         previous = current
 
 
@@ -102,7 +107,7 @@ async def test_reset_vector_fetch_reads_and_latches_correct_addresses(dut):
 
     reads = []
     cocotb.start_soon(
-        _watch_rising_bit(dut.uo_out, MEM_OE, lambda: reads.append(sram.address))
+        _watch_asserted_low_bit(dut.uo_out, MEM_OE_N, lambda: reads.append(sram.address))
     )
 
     try:
@@ -161,9 +166,9 @@ async def test_cpu_write_reaches_memory(dut):
 
     # writes = []
     # cocotb.start_soon(
-    #     _watch_rising_bit(
+    #     _watch_asserted_low_bit(
     #         dut.uo_out,
-    #         MEM_WE,
+    #         MEM_WE_N,
     #         lambda: writes.append((sram.address, byte(dut.uio_out))),
     #     )
     # )

@@ -15,6 +15,13 @@ def bit(signal, index):
     return 1 if signal.value[index] == Logic("1") else 0
 
 
+def asserted_low(signal, index):
+    """True when the given bit of `signal` is a definite 0, i.e. an active-low pin is
+    asserted. X/Z (undriven / unknown) is *not* asserted, unlike `bit`, which would read
+    it as 0."""
+    return signal.value[index] == Logic("0")
+
+
 def byte(signal):
     """Returns the full value of `signal` as an int, treating X/Z bits as 0."""
     value = signal.value
