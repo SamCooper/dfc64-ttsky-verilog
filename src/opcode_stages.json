@@ -13,33 +13,27 @@
             {"uJump": "UJMP_FETCH", "reg_sr_set": "true", "write_en": "true", "read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_Y"}
         ]},
         {"id": "OP_LDA_ZP", "stages": [
-            {"read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
-            {"write_reg_sel": "REG_AHE"},
+            {"zp_clr_set": true, "read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
             {"uJump": "UJMP_FETCH", "reg_sr_set": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_A"}
         ]},
         {"id": "OP_LDX_ZP", "stages": [
-            {"read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
-            {"write_reg_sel": "REG_AHE"},
+            {"zp_clr_set": true, "read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
             {"uJump": "UJMP_FETCH", "reg_sr_set": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_X"}
         ]},
         {"id": "OP_LDY_ZP", "stages": [
-            {"read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
-            {"write_reg_sel": "REG_AHE"},
+            {"zp_clr_set": true, "read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
             {"uJump": "UJMP_FETCH", "reg_sr_set": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_Y"}
         ]},
         {"id": "OP_LDA_ZP_X", "stages": [
-            {"read_reg_sel1": "REG_IR_L", "read_reg_sel2": "REG_X", "write_reg_sel": "REG_ALE"},
-            {"write_reg_sel": "REG_AHE"},
+            {"zp_clr_set": true, "read_reg_sel1": "REG_IR_L", "read_reg_sel2": "REG_X", "write_reg_sel": "REG_ALE"},
             {"uJump": "UJMP_FETCH", "reg_sr_set": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_A"}
         ]},
         {"id": "OP_LDX_ZP_Y", "stages": [
-            {"read_reg_sel1": "REG_IR_L", "read_reg_sel2": "REG_Y", "write_reg_sel": "REG_ALE"},
-            {"write_reg_sel": "REG_AHE"},
+            {"zp_clr_set": true, "read_reg_sel1": "REG_IR_L", "read_reg_sel2": "REG_Y", "write_reg_sel": "REG_ALE"},
             {"uJump": "UJMP_FETCH", "reg_sr_set": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_X"}
         ]},
         {"id": "OP_LDY_ZP_X", "stages": [
-            {"read_reg_sel1": "REG_IR_L", "read_reg_sel2": "REG_X", "write_reg_sel": "REG_ALE"},
-            {"write_reg_sel": "REG_AHE"},
+            {"zp_clr_set": true, "read_reg_sel1": "REG_IR_L", "read_reg_sel2": "REG_X", "write_reg_sel": "REG_ALE"},
             {"uJump": "UJMP_FETCH", "reg_sr_set": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_Y"}
         ]},
         {"id": "OP_LDA_ABS", "stages": [
@@ -77,19 +71,34 @@
             {"set_addr_c": "true", "read_reg_sel1": "REG_IR_H", "write_reg_sel": "REG_AHE"},
             {"uJump": "UJMP_FETCH", "reg_sr_set": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_Y"}
         ]},
-        {"id": "OP_STA_ZP", "stages": [
+        {"id": "OP_LDA_IND_X", "stages": [
+            {"zp_clr_set": true, "read_reg_sel1": "REG_IR_L", "read_reg_sel2": "REG_X", "write_reg_sel": "REG_ALE"},
+            {"write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_L"},
+            {"zp_clr_set": true, "al_inc": "true"},
+            {"write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_H"},
             {"read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
-            {"write_reg_sel": "REG_AHE"},
+            {"read_reg_sel1": "REG_IR_H", "write_reg_sel": "REG_AHE"},
+            {"uJump": "UJMP_FETCH", "reg_sr_set": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_A"}
+        ]},
+        {"id": "OP_LDA_IND_Y", "stages": [
+            {"zp_clr_set": true, "read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
+            {"write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "read_reg_sel2": "REG_Y", "write_reg_sel": "REG_IR_L"},
+            {"set_addr_c": true, "zp_clr_set": true, "al_inc": "true"},
+            {"set_addr_c": true, "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_H"},
+            {"read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
+            {"read_reg_sel1": "REG_IR_H", "write_reg_sel": "REG_AHE"},
+            {"uJump": "UJMP_FETCH", "reg_sr_set": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_A"}
+        ]},
+        {"id": "OP_STA_ZP", "stages": [
+            {"zp_clr_set": true, "read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
             {"uJump": "UJMP_FETCH", "mem_write_en": "true", "read_reg_sel1": "REG_A", "write_reg_sel": "REG_MEM"}
         ]},
         {"id": "OP_STX_ZP", "stages": [
-            {"read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
-            {"write_reg_sel": "REG_AHE"},
+            {"zp_clr_set": true, "read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
             {"uJump": "UJMP_FETCH", "mem_write_en": "true", "read_reg_sel1": "REG_X", "write_reg_sel": "REG_MEM"}
         ]},
         {"id": "OP_STY_ZP", "stages": [
-            {"read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
-            {"write_reg_sel": "REG_AHE"},
+            {"zp_clr_set": true, "read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
             {"uJump": "UJMP_FETCH", "mem_write_en": "true", "read_reg_sel1": "REG_Y", "write_reg_sel": "REG_MEM"}
         ]},
         {"id": "OP_STA_ABS", "stages": [

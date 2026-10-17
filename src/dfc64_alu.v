@@ -26,7 +26,8 @@ module dfc64_alu (
         if (!rst_n)
             bit_addr_c <= 0;
         else begin
-            bit_addr_c <= ((src_data1 + src_data2) < src_data1) ? 1 : 0;
+            if (!set_addr_c) 
+                bit_addr_c <= ((src_data1 + src_data2) < src_data1) ? 1 : 0;
             $display("%0t ADDR C REG set %b %h %h!", $realtime, bit_addr_c, src_data1, src_data2);
         end
     end
