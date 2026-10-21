@@ -25,6 +25,10 @@ module dfc64_sr (
     localparam FLAG_Z = 1;	// Zero
     localparam FLAG_C = 0;	// Carry   
 
+    wire [3:0] is_v_op;
+    assign is_v_op[1:0] = opcode_in[1:0];
+    assign is_v_op[3:2] = opcode_in[6:5];
+
     always @ (posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             status_out <= 8'h0;
@@ -49,10 +53,17 @@ module dfc64_sr (
                     end
                 endcase
             end else begin
-                // need to handle V case of ADC and SBC
                 if (ctl_carry == 1) status_out[FLAG_C] <= alu_carry_in;
+
                 if (ctl_nz == 1) begin
-                    $display("%0t SR set C%b Z%b N%b!", $realtime, alu_carry_in, alu_zero_in, alu_negative_in);
+                    $display("%0t SR set C%b Z%b N%b V%b!", $realtime, alu_carry_in, alu_zero_in, alu_negative_in, alu_overflow_in);
+
+                    // need to handle V case of ADC and SBC
+                    if (is_v_op == 4'b1101) begin
+                        $display("%0t SR set V opcode %b V%b!", $realtime, opcode_in, alu_overflow_in);
+                        status_out[FLAG_V] <= alu_overflow_in;
+                    end
+
                     status_out[FLAG_N] <= alu_negative_in;
                     status_out[FLAG_Z] <= alu_zero_in;
                 end

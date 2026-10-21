@@ -31,8 +31,8 @@ class SRAM:
         self._we_n_bit = we_n_bit
         self._oe_n_bit = oe_n_bit
         self.memory = bytearray(size)
-        self.reads = []
-        self.writes = []
+        self.reads = []      # every address read, in order
+        self.writes = {}     # address -> the latest byte written to it
         self._task = cocotb.start_soon(self._run())
 
     @property
@@ -73,7 +73,7 @@ class SRAM:
                 if data_val.is_resolvable:
                     self.dut._log.info(f"SRAM write: {hex(self.address)} {hex(data_val.to_unsigned())}")
                     self.memory[self.address] = data_val.to_unsigned()
-                    self.writes.append((self.address, data_val.to_unsigned()))
+                    self.writes[self.address] = data_val.to_unsigned()
                 else:
                     self.dut._log.warning(f"Attempted to write unresolved data to RAM: {self.address} {data_val}")
 

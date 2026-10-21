@@ -178,8 +178,8 @@ async def test_cpu_write_reaches_memory(dut):
     except SimTimeoutError:
         pass
 
-    assert (target_addr, expected_value) in sram.writes, (
+    assert sram.writes.get(target_addr) == expected_value, (
         f"expected a write of ${expected_value:02X} to ${target_addr:04X}; "
-        f"observed writes {[(f'${a:04X}', f'${v:02X}') for a, v in sram.writes]}"
+        f"observed writes {[(f'${a:04X}', f'${v:02X}') for a, v in sorted(sram.writes.items())]}"
     )
     assert sram.memory[target_addr] == expected_value

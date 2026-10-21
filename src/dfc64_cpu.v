@@ -31,7 +31,7 @@ module tt_um_samcooper_dfc64 (
     wire alu_overflow;
     wire alu_zero;
 
-    wire alu_sub;
+    wire [3:0] alu_op;
     wire set_addr_c;
     wire pc_jmp;
     wire pc_inc;
@@ -123,9 +123,10 @@ module tt_um_samcooper_dfc64 (
       .clk(clk),
       .rst_n(rst_n),
 
-      .sub(alu_sub),
+      .alu_op(alu_op),
       .set_addr_c(set_addr_c),
 
+      .carry_in(sr[0]),
       .src_data1(mux_data1),
       .src_data2(mux_data2),
 
@@ -143,7 +144,7 @@ module tt_um_samcooper_dfc64 (
       .ir(ir),
       .mem_in(uio_in),
 
-      .alu_sub(alu_sub),
+      .alu_op(alu_op),
       .set_addr_c(set_addr_c),
       .flags_opcode(flags_opcode),
       .flags_ctl_c(flags_ctl_c),

@@ -48,8 +48,8 @@ The [Opcode Matrix](#opcode-matrix) is a 16×16 grid that cross-checks where eac
 |----------|-------------:|--------:|-----:|--------:|----------:|-----------:|
 | [Transfer Instructions](#transfer-instructions) | 12 | 37 | 37 | 0 | 0 | 100% |
 | [Stack Instructions](#stack-instructions) | 4 | 4 | 4 | 0 | 0 | 100% |
-| [Decrements & Increments](#decrements--increments) | 6 | 12 | 0 | 12 | 12 | 0% |
-| [Arithmetic Operations](#arithmetic-operations) | 2 | 16 | 0 | 16 | 16 | 0% |
+| [Decrements & Increments](#decrements--increments) | 6 | 12 | 12 | 0 | 0 | 100% |
+| [Arithmetic Operations](#arithmetic-operations) | 2 | 16 | 16 | 0 | 0 | 100% |
 | [Logical Operations](#logical-operations) | 3 | 24 | 0 | 24 | 24 | 0% |
 | [Shift & Rotate Instructions](#shift--rotate-instructions) | 4 | 20 | 0 | 20 | 20 | 0% |
 | [Flag Instructions](#flag-instructions) | 7 | 7 | 7 | 0 | 0 | 100% |
@@ -58,27 +58,19 @@ The [Opcode Matrix](#opcode-matrix) is a 16×16 grid that cross-checks where eac
 | [Jumps & Subroutines](#jumps--subroutines) | 3 | 4 | 1 | 3 | 3 | 25% |
 | [Interrupts](#interrupts) | 2 | 2 | 0 | 2 | 2 | 0% |
 | [Other](#other) | 2 | 3 | 1 | 2 | 2 | 33% |
-| **Total** | **56** | **151** | **50** | **101** | **101** | **33%** |
+| **Total** | **56** | **151** | **78** | **73** | **73** | **51%** |
 
 ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can be completed first. These two rows are not included in the opcode counts above.
 
 <!-- results:start -->
 
-**Last results:** 50 passed, 103 failed, 0 not run (of 153 tests).
+**Last results:** 78 passed, 75 failed, 0 not run (of 153 tests).
 
 **Decimal mode:** 0 of 2 done (0%).
 
 | Failing test | Reason |
 |--------------|--------|
-| [adc_abs](test/asm_tests/adc_abs.asm) | [adc_abs] RAM mismatch at 0x1fc: Expected 0x34, got 0x35 |
-| [adc_abs_x](test/asm_tests/adc_abs_x.asm) | [adc_abs_x] RAM mismatch at 0x1fc: Expected 0x34, got 0x35 |
-| [adc_abs_y](test/asm_tests/adc_abs_y.asm) | [adc_abs_y] RAM mismatch at 0x1fc: Expected 0x34, got 0x35 |
-| [adc_imm](test/asm_tests/adc_imm.asm) | [adc_imm] RAM mismatch at 0x1f8: Expected 0x34, got 0x74 |
-| [adc_imm_dec](test/asm_tests/adc_imm_dec.asm) | [adc_imm_dec] RAM mismatch at 0x1fb: Expected 0xfd, got 0x3c |
-| [adc_ind_x](test/asm_tests/adc_ind_x.asm) | [adc_ind_x] RAM mismatch at 0x1fc: Expected 0x34, got 0x35 |
-| [adc_ind_y](test/asm_tests/adc_ind_y.asm) | [adc_ind_y] RAM mismatch at 0x1fc: Expected 0x34, got 0x35 |
-| [adc_zp](test/asm_tests/adc_zp.asm) | [adc_zp] RAM mismatch at 0x1fc: Expected 0x34, got 0x35 |
-| [adc_zp_x](test/asm_tests/adc_zp_x.asm) | [adc_zp_x] RAM mismatch at 0x1fc: Expected 0x34, got 0x35 |
+| [adc_imm_dec](test/asm_tests/adc_imm_dec.asm) | [adc_imm_dec] RAM mismatch at 0x1fa: Expected 0xbd, got 0xbc |
 | [and_abs](test/asm_tests/and_abs.asm) | [and_abs] RAM mismatch at 0x1fd: Expected 0x77, got 0x75 |
 | [and_abs_x](test/asm_tests/and_abs_x.asm) | [and_abs_x] RAM mismatch at 0x1fd: Expected 0x77, got 0x75 |
 | [and_abs_y](test/asm_tests/and_abs_y.asm) | [and_abs_y] RAM mismatch at 0x1fd: Expected 0x77, got 0x75 |
@@ -117,12 +109,6 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | [cpy_abs](test/asm_tests/cpy_abs.asm) | [cpy_abs] RAM mismatch at 0x1fc: Expected 0xf4, got 0x75 |
 | [cpy_imm](test/asm_tests/cpy_imm.asm) | [cpy_imm] RAM mismatch at 0x1fb: Expected 0xf4, got 0x77 |
 | [cpy_zp](test/asm_tests/cpy_zp.asm) | [cpy_zp] RAM mismatch at 0x1fc: Expected 0xf4, got 0x75 |
-| [dec_abs](test/asm_tests/dec_abs.asm) | [dec_abs] RAM mismatch at 0x100: Expected 0x7f, got 0x80 |
-| [dec_abs_x](test/asm_tests/dec_abs_x.asm) | [dec_abs_x] RAM mismatch at 0x10: Expected 0x3c, got 0x3d |
-| [dec_zp](test/asm_tests/dec_zp.asm) | [dec_zp] RAM mismatch at 0x0: Expected 0x5a, got 0x5b |
-| [dec_zp_x](test/asm_tests/dec_zp_x.asm) | [dec_zp_x] RAM mismatch at 0x10: Expected 0xff, got 0x0 |
-| [dex](test/asm_tests/dex.asm) | [dex] RAM mismatch at 0x1fc: Expected 0x75, got 0xf5 |
-| [dey](test/asm_tests/dey.asm) | [dey] RAM mismatch at 0x1fc: Expected 0x75, got 0xf5 |
 | [eor_abs](test/asm_tests/eor_abs.asm) | [eor_abs] RAM mismatch at 0x1fc: Expected 0x75, got 0xf5 |
 | [eor_abs_x](test/asm_tests/eor_abs_x.asm) | [eor_abs_x] RAM mismatch at 0x1fc: Expected 0x75, got 0xf5 |
 | [eor_abs_y](test/asm_tests/eor_abs_y.asm) | [eor_abs_y] RAM mismatch at 0x1fc: Expected 0x75, got 0xf5 |
@@ -131,12 +117,6 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | [eor_ind_y](test/asm_tests/eor_ind_y.asm) | [eor_ind_y] RAM mismatch at 0x1fc: Expected 0x75, got 0xf5 |
 | [eor_zp](test/asm_tests/eor_zp.asm) | [eor_zp] RAM mismatch at 0x1fc: Expected 0x75, got 0xf5 |
 | [eor_zp_x](test/asm_tests/eor_zp_x.asm) | [eor_zp_x] RAM mismatch at 0x1fc: Expected 0x75, got 0xf5 |
-| [inc_abs](test/asm_tests/inc_abs.asm) | [inc_abs] RAM mismatch at 0x100: Expected 0x7f, got 0x7e |
-| [inc_abs_x](test/asm_tests/inc_abs_x.asm) | [inc_abs_x] RAM mismatch at 0x10: Expected 0x3c, got 0x3b |
-| [inc_zp](test/asm_tests/inc_zp.asm) | [inc_zp] RAM mismatch at 0x0: Expected 0x5a, got 0x59 |
-| [inc_zp_x](test/asm_tests/inc_zp_x.asm) | [inc_zp_x] RAM mismatch at 0x10: Expected 0x80, got 0x7f |
-| [inx](test/asm_tests/inx.asm) | [inx] RAM mismatch at 0x1fd: Expected 0x77, got 0xf5 |
-| [iny](test/asm_tests/iny.asm) | [iny] RAM mismatch at 0x1fd: Expected 0x77, got 0xf5 |
 | [jmp_ind](test/asm_tests/jmp_ind.asm) | [jmp_ind] RAM mismatch at 0x1fe: Expected 0x75, got 0x0 |
 | [jsr](test/asm_tests/jsr.asm) | [jsr] RAM mismatch at 0x100: Expected 0xc0, got 0x0 |
 | [lsr_abs](test/asm_tests/lsr_abs.asm) | [lsr_abs] RAM mismatch at 0x100: Expected 0x7f, got 0xfe |
@@ -164,15 +144,7 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | [ror_zp_x](test/asm_tests/ror_zp_x.asm) | [ror_zp_x] RAM mismatch at 0x10: Expected 0xa5, got 0x4a |
 | [rti](test/asm_tests/rti.asm) | [rti] RAM mismatch at 0x100: Expected 0xf3, got 0xc0 |
 | [rts](test/asm_tests/rts.asm) | [rts] RAM mismatch at 0x100: Expected 0x77, got 0xc5 |
-| [sbc_abs](test/asm_tests/sbc_abs.asm) | [sbc_abs] RAM mismatch at 0x1fc: Expected 0x75, got 0xb4 |
-| [sbc_abs_x](test/asm_tests/sbc_abs_x.asm) | [sbc_abs_x] RAM mismatch at 0x1fc: Expected 0x75, got 0xb4 |
-| [sbc_abs_y](test/asm_tests/sbc_abs_y.asm) | [sbc_abs_y] RAM mismatch at 0x1fc: Expected 0x75, got 0xb4 |
-| [sbc_imm](test/asm_tests/sbc_imm.asm) | [sbc_imm] RAM mismatch at 0x1f8: Expected 0x37, got 0x34 |
-| [sbc_imm_dec](test/asm_tests/sbc_imm_dec.asm) | [sbc_imm_dec] RAM mismatch at 0x1fa: Expected 0xbc, got 0x3e |
-| [sbc_ind_x](test/asm_tests/sbc_ind_x.asm) | [sbc_ind_x] RAM mismatch at 0x1fc: Expected 0x75, got 0xb4 |
-| [sbc_ind_y](test/asm_tests/sbc_ind_y.asm) | [sbc_ind_y] RAM mismatch at 0x1fc: Expected 0x75, got 0xb4 |
-| [sbc_zp](test/asm_tests/sbc_zp.asm) | [sbc_zp] RAM mismatch at 0x1fc: Expected 0x75, got 0xb4 |
-| [sbc_zp_x](test/asm_tests/sbc_zp_x.asm) | [sbc_zp_x] RAM mismatch at 0x1fc: Expected 0x75, got 0xb4 |
+| [sbc_imm_dec](test/asm_tests/sbc_imm_dec.asm) | [sbc_imm_dec] RAM mismatch at 0x301: Expected 0x9, got 0xf |
 
 <!-- results:end -->
 
@@ -181,17 +153,17 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | Abbrev. | Mode | Syntax | Opcodes | Done | % Complete |
 |---------|------|--------|--------:|-----:|-----------:|
 | `A` | accumulator | `OPC A` | 4 | 0 | 0% |
-| `abs` | absolute | `OPC oper` | 23 | 7 | 30% |
-| `abs,X` | absolute,X | `OPC oper,X` | 15 | 3 | 20% |
-| `abs,Y` | absolute,Y | `OPC oper,Y` | 9 | 3 | 33% |
-| `#` | immediate | `OPC #oper` | 11 | 3 | 27% |
-| `impl` | implied | `OPC` | 25 | 18 | 72% |
+| `abs` | absolute | `OPC oper` | 23 | 11 | 47% |
+| `abs,X` | absolute,X | `OPC oper,X` | 15 | 7 | 46% |
+| `abs,Y` | absolute,Y | `OPC oper,Y` | 9 | 5 | 55% |
+| `#` | immediate | `OPC #oper` | 11 | 5 | 45% |
+| `impl` | implied | `OPC` | 25 | 22 | 88% |
 | `ind` | indirect | `OPC (oper)` | 1 | 0 | 0% |
-| `X,ind` | (indirect,X) | `OPC (oper,X)` | 8 | 2 | 25% |
-| `ind,Y` | (indirect),Y | `OPC (oper),Y` | 8 | 2 | 25% |
+| `X,ind` | (indirect,X) | `OPC (oper,X)` | 8 | 4 | 50% |
+| `ind,Y` | (indirect),Y | `OPC (oper),Y` | 8 | 4 | 50% |
 | `rel` | relative | `OPC oper` | 8 | 0 | 0% |
-| `zpg` | zeropage | `OPC oper` | 21 | 6 | 28% |
-| `zpg,X` | zeropage,X | `OPC oper,X` | 16 | 4 | 25% |
+| `zpg` | zeropage | `OPC oper` | 21 | 10 | 47% |
+| `zpg,X` | zeropage,X | `OPC oper,X` | 16 | 8 | 50% |
 | `zpg,Y` | zeropage,Y | `OPC oper,Y` | 2 | 2 | 100% |
 
 ## Instructions
@@ -399,67 +371,67 @@ Flags affected: `from stack`
 
 Flags affected: `N Z`
 
-**Progress:** 0 of 4 done (0%)
+**Progress:** 4 of 4 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $C6 | zeropage | `DEC oper` | 2 | 5 | | [dec_zp.asm](test/asm_tests/dec_zp.asm) / [dec_zp.json](test/asm_tests/dec_zp.json) |
-| [!] | $D6 | zeropage,X | `DEC oper,X` | 2 | 6 | | [dec_zp_x.asm](test/asm_tests/dec_zp_x.asm) / [dec_zp_x.json](test/asm_tests/dec_zp_x.json) |
-| [!] | $CE | absolute | `DEC oper` | 3 | 6 | | [dec_abs.asm](test/asm_tests/dec_abs.asm) / [dec_abs.json](test/asm_tests/dec_abs.json) |
-| [!] | $DE | absolute,X | `DEC oper,X` | 3 | 7 | | [dec_abs_x.asm](test/asm_tests/dec_abs_x.asm) / [dec_abs_x.json](test/asm_tests/dec_abs_x.json) |
+| [x] | $C6 | zeropage | `DEC oper` | 2 | 5 | 8 | [dec_zp.asm](test/asm_tests/dec_zp.asm) / [dec_zp.json](test/asm_tests/dec_zp.json) |
+| [x] | $D6 | zeropage,X | `DEC oper,X` | 2 | 6 | 8 | [dec_zp_x.asm](test/asm_tests/dec_zp_x.asm) / [dec_zp_x.json](test/asm_tests/dec_zp_x.json) |
+| [x] | $CE | absolute | `DEC oper` | 3 | 6 | 11 | [dec_abs.asm](test/asm_tests/dec_abs.asm) / [dec_abs.json](test/asm_tests/dec_abs.json) |
+| [x] | $DE | absolute,X | `DEC oper,X` | 3 | 7 | 11 | [dec_abs_x.asm](test/asm_tests/dec_abs_x.asm) / [dec_abs_x.json](test/asm_tests/dec_abs_x.json) |
 
 #### DEX: Decrement Index X by One
 
 Flags affected: `N Z`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $CA | implied | `DEX` | 1 | 2 | | [dex.asm](test/asm_tests/dex.asm) / [dex.json](test/asm_tests/dex.json) |
+| [x] | $CA | implied | `DEX` | 1 | 2 | 4 | [dex.asm](test/asm_tests/dex.asm) / [dex.json](test/asm_tests/dex.json) |
 
 #### DEY: Decrement Index Y by One
 
 Flags affected: `N Z`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $88 | implied | `DEY` | 1 | 2 | | [dey.asm](test/asm_tests/dey.asm) / [dey.json](test/asm_tests/dey.json) |
+| [x] | $88 | implied | `DEY` | 1 | 2 | 4 | [dey.asm](test/asm_tests/dey.asm) / [dey.json](test/asm_tests/dey.json) |
 
 #### INC: Increment Memory by One
 
 Flags affected: `N Z`
 
-**Progress:** 0 of 4 done (0%)
+**Progress:** 4 of 4 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $E6 | zeropage | `INC oper` | 2 | 5 | | [inc_zp.asm](test/asm_tests/inc_zp.asm) / [inc_zp.json](test/asm_tests/inc_zp.json) |
-| [!] | $F6 | zeropage,X | `INC oper,X` | 2 | 6 | | [inc_zp_x.asm](test/asm_tests/inc_zp_x.asm) / [inc_zp_x.json](test/asm_tests/inc_zp_x.json) |
-| [!] | $EE | absolute | `INC oper` | 3 | 6 | | [inc_abs.asm](test/asm_tests/inc_abs.asm) / [inc_abs.json](test/asm_tests/inc_abs.json) |
-| [!] | $FE | absolute,X | `INC oper,X` | 3 | 7 | | [inc_abs_x.asm](test/asm_tests/inc_abs_x.asm) / [inc_abs_x.json](test/asm_tests/inc_abs_x.json) |
+| [x] | $E6 | zeropage | `INC oper` | 2 | 5 | 8 | [inc_zp.asm](test/asm_tests/inc_zp.asm) / [inc_zp.json](test/asm_tests/inc_zp.json) |
+| [x] | $F6 | zeropage,X | `INC oper,X` | 2 | 6 | 8 | [inc_zp_x.asm](test/asm_tests/inc_zp_x.asm) / [inc_zp_x.json](test/asm_tests/inc_zp_x.json) |
+| [x] | $EE | absolute | `INC oper` | 3 | 6 | 11 | [inc_abs.asm](test/asm_tests/inc_abs.asm) / [inc_abs.json](test/asm_tests/inc_abs.json) |
+| [x] | $FE | absolute,X | `INC oper,X` | 3 | 7 | 11 | [inc_abs_x.asm](test/asm_tests/inc_abs_x.asm) / [inc_abs_x.json](test/asm_tests/inc_abs_x.json) |
 
 #### INX: Increment Index X by One
 
 Flags affected: `N Z`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $E8 | implied | `INX` | 1 | 2 | | [inx.asm](test/asm_tests/inx.asm) / [inx.json](test/asm_tests/inx.json) |
+| [x] | $E8 | implied | `INX` | 1 | 2 | 4 | [inx.asm](test/asm_tests/inx.asm) / [inx.json](test/asm_tests/inx.json) |
 
 #### INY: Increment Index Y by One
 
 Flags affected: `N Z`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $C8 | implied | `INY` | 1 | 2 | | [iny.asm](test/asm_tests/iny.asm) / [iny.json](test/asm_tests/iny.json) |
+| [x] | $C8 | implied | `INY` | 1 | 2 | 4 | [iny.asm](test/asm_tests/iny.asm) / [iny.json](test/asm_tests/iny.json) |
 
 ### Arithmetic Operations
 
@@ -467,41 +439,41 @@ Flags affected: `N Z`
 
 Flags affected: `N Z C V`
 
-**Progress:** 0 of 9 done (0%)
+**Progress:** 8 of 9 done (88%)
 
 > Test both binary and decimal (D=1) mode.
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $69 | immediate | `ADC #oper` | 2 | 2 | | [adc_imm.asm](test/asm_tests/adc_imm.asm) / [adc_imm.json](test/asm_tests/adc_imm.json) |
-| [!] | $69 (D=1) | immediate, decimal mode | `ADC #oper` | 2 | 2 | | [adc_imm_dec.asm](test/asm_tests/adc_imm_dec.asm) / [adc_imm_dec.json](test/asm_tests/adc_imm_dec.json) |
-| [!] | $65 | zeropage | `ADC oper` | 2 | 3 | | [adc_zp.asm](test/asm_tests/adc_zp.asm) / [adc_zp.json](test/asm_tests/adc_zp.json) |
-| [!] | $75 | zeropage,X | `ADC oper,X` | 2 | 4 | | [adc_zp_x.asm](test/asm_tests/adc_zp_x.asm) / [adc_zp_x.json](test/asm_tests/adc_zp_x.json) |
-| [!] | $6D | absolute | `ADC oper` | 3 | 4 | | [adc_abs.asm](test/asm_tests/adc_abs.asm) / [adc_abs.json](test/asm_tests/adc_abs.json) |
-| [!] | $7D | absolute,X | `ADC oper,X` | 3 | 4* | | [adc_abs_x.asm](test/asm_tests/adc_abs_x.asm) / [adc_abs_x.json](test/asm_tests/adc_abs_x.json) |
-| [!] | $79 | absolute,Y | `ADC oper,Y` | 3 | 4* | | [adc_abs_y.asm](test/asm_tests/adc_abs_y.asm) / [adc_abs_y.json](test/asm_tests/adc_abs_y.json) |
-| [!] | $61 | (indirect,X) | `ADC (oper,X)` | 2 | 6 | | [adc_ind_x.asm](test/asm_tests/adc_ind_x.asm) / [adc_ind_x.json](test/asm_tests/adc_ind_x.json) |
-| [!] | $71 | (indirect),Y | `ADC (oper),Y` | 2 | 5* | | [adc_ind_y.asm](test/asm_tests/adc_ind_y.asm) / [adc_ind_y.json](test/asm_tests/adc_ind_y.json) |
+| [x] | $69 | immediate | `ADC #oper` | 2 | 2 | 6 | [adc_imm.asm](test/asm_tests/adc_imm.asm) / [adc_imm.json](test/asm_tests/adc_imm.json) |
+| [!] | $69 (D=1) | immediate, decimal mode | `ADC #oper` | 2 | 2 | 6 | [adc_imm_dec.asm](test/asm_tests/adc_imm_dec.asm) / [adc_imm_dec.json](test/asm_tests/adc_imm_dec.json) |
+| [x] | $65 | zeropage | `ADC oper` | 2 | 3 | 7 | [adc_zp.asm](test/asm_tests/adc_zp.asm) / [adc_zp.json](test/asm_tests/adc_zp.json) |
+| [x] | $75 | zeropage,X | `ADC oper,X` | 2 | 4 | 7 | [adc_zp_x.asm](test/asm_tests/adc_zp_x.asm) / [adc_zp_x.json](test/asm_tests/adc_zp_x.json) |
+| [x] | $6D | absolute | `ADC oper` | 3 | 4 | 10 | [adc_abs.asm](test/asm_tests/adc_abs.asm) / [adc_abs.json](test/asm_tests/adc_abs.json) |
+| [x] | $7D | absolute,X | `ADC oper,X` | 3 | 4* | 10 | [adc_abs_x.asm](test/asm_tests/adc_abs_x.asm) / [adc_abs_x.json](test/asm_tests/adc_abs_x.json) |
+| [x] | $79 | absolute,Y | `ADC oper,Y` | 3 | 4* | 10 | [adc_abs_y.asm](test/asm_tests/adc_abs_y.asm) / [adc_abs_y.json](test/asm_tests/adc_abs_y.json) |
+| [x] | $61 | (indirect,X) | `ADC (oper,X)` | 2 | 6 | 12 | [adc_ind_x.asm](test/asm_tests/adc_ind_x.asm) / [adc_ind_x.json](test/asm_tests/adc_ind_x.json) |
+| [x] | $71 | (indirect),Y | `ADC (oper),Y` | 2 | 5* | 12 | [adc_ind_y.asm](test/asm_tests/adc_ind_y.asm) / [adc_ind_y.json](test/asm_tests/adc_ind_y.json) |
 
 #### SBC: Subtract Memory from Accumulator with Borrow
 
 Flags affected: `N Z C V`
 
-**Progress:** 0 of 9 done (0%)
+**Progress:** 8 of 9 done (88%)
 
 > Test both binary and decimal (D=1) mode.
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $E9 | immediate | `SBC #oper` | 2 | 2 | | [sbc_imm.asm](test/asm_tests/sbc_imm.asm) / [sbc_imm.json](test/asm_tests/sbc_imm.json) |
-| [!] | $E9 (D=1) | immediate, decimal mode | `SBC #oper` | 2 | 2 | | [sbc_imm_dec.asm](test/asm_tests/sbc_imm_dec.asm) / [sbc_imm_dec.json](test/asm_tests/sbc_imm_dec.json) |
-| [!] | $E5 | zeropage | `SBC oper` | 2 | 3 | | [sbc_zp.asm](test/asm_tests/sbc_zp.asm) / [sbc_zp.json](test/asm_tests/sbc_zp.json) |
-| [!] | $F5 | zeropage,X | `SBC oper,X` | 2 | 4 | | [sbc_zp_x.asm](test/asm_tests/sbc_zp_x.asm) / [sbc_zp_x.json](test/asm_tests/sbc_zp_x.json) |
-| [!] | $ED | absolute | `SBC oper` | 3 | 4 | | [sbc_abs.asm](test/asm_tests/sbc_abs.asm) / [sbc_abs.json](test/asm_tests/sbc_abs.json) |
-| [!] | $FD | absolute,X | `SBC oper,X` | 3 | 4* | | [sbc_abs_x.asm](test/asm_tests/sbc_abs_x.asm) / [sbc_abs_x.json](test/asm_tests/sbc_abs_x.json) |
-| [!] | $F9 | absolute,Y | `SBC oper,Y` | 3 | 4* | | [sbc_abs_y.asm](test/asm_tests/sbc_abs_y.asm) / [sbc_abs_y.json](test/asm_tests/sbc_abs_y.json) |
-| [!] | $E1 | (indirect,X) | `SBC (oper,X)` | 2 | 6 | | [sbc_ind_x.asm](test/asm_tests/sbc_ind_x.asm) / [sbc_ind_x.json](test/asm_tests/sbc_ind_x.json) |
-| [!] | $F1 | (indirect),Y | `SBC (oper),Y` | 2 | 5* | | [sbc_ind_y.asm](test/asm_tests/sbc_ind_y.asm) / [sbc_ind_y.json](test/asm_tests/sbc_ind_y.json) |
+| [x] | $E9 | immediate | `SBC #oper` | 2 | 2 | 6 | [sbc_imm.asm](test/asm_tests/sbc_imm.asm) / [sbc_imm.json](test/asm_tests/sbc_imm.json) |
+| [!] | $E9 (D=1) | immediate, decimal mode | `SBC #oper` | 2 | 2 | 6 | [sbc_imm_dec.asm](test/asm_tests/sbc_imm_dec.asm) / [sbc_imm_dec.json](test/asm_tests/sbc_imm_dec.json) |
+| [x] | $E5 | zeropage | `SBC oper` | 2 | 3 | 7 | [sbc_zp.asm](test/asm_tests/sbc_zp.asm) / [sbc_zp.json](test/asm_tests/sbc_zp.json) |
+| [x] | $F5 | zeropage,X | `SBC oper,X` | 2 | 4 | 7 | [sbc_zp_x.asm](test/asm_tests/sbc_zp_x.asm) / [sbc_zp_x.json](test/asm_tests/sbc_zp_x.json) |
+| [x] | $ED | absolute | `SBC oper` | 3 | 4 | 10 | [sbc_abs.asm](test/asm_tests/sbc_abs.asm) / [sbc_abs.json](test/asm_tests/sbc_abs.json) |
+| [x] | $FD | absolute,X | `SBC oper,X` | 3 | 4* | 10 | [sbc_abs_x.asm](test/asm_tests/sbc_abs_x.asm) / [sbc_abs_x.json](test/asm_tests/sbc_abs_x.json) |
+| [x] | $F9 | absolute,Y | `SBC oper,Y` | 3 | 4* | 10 | [sbc_abs_y.asm](test/asm_tests/sbc_abs_y.asm) / [sbc_abs_y.json](test/asm_tests/sbc_abs_y.json) |
+| [x] | $E1 | (indirect,X) | `SBC (oper,X)` | 2 | 6 | 12 | [sbc_ind_x.asm](test/asm_tests/sbc_ind_x.asm) / [sbc_ind_x.json](test/asm_tests/sbc_ind_x.json) |
+| [x] | $F1 | (indirect),Y | `SBC (oper),Y` | 2 | 5* | 12 | [sbc_ind_y.asm](test/asm_tests/sbc_ind_y.asm) / [sbc_ind_y.json](test/asm_tests/sbc_ind_y.json) |
 
 ### Logical Operations
 

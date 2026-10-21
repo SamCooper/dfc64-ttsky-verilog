@@ -43,22 +43,22 @@ ROM_SIZE = 256
 # (only uJump, which steers the sequencer in the fixed fragments).
 Field = namedtuple("Field", "name width default output")
 FIELDS = [
-    Field("uJump",           3, "UJMP_STEP", False),
-    Field("alu_sub",         1, "false",     True),
-    Field("set_addr_c",      1, "false",     True),
-    Field("flags_opcode",    1, "false",     True),
-    Field("flags_ctl_c",     1, "false",     True),
-    Field("flags_ctl_nz",    1, "false",     True),
-    Field("al_inc",          1, "false",     True),
-    Field("zp_clr_set",      1, "false",     True),
-    Field("pc_inc",          1, "false",     True),
-    Field("pc_jmp",          1, "false",     True),
-    Field("write_en",        1, "false",     True),
-    Field("mem_read_en",     1, "false",     True),
-    Field("mem_write_en",    1, "false",     True),
-    Field("read_reg_sel1",   4, "REG_ZERO",  True),
-    Field("read_reg_sel2",   4, "REG_ZERO",  True),
-    Field("write_reg_sel",   4, "REG_ZERO",  True),
+    Field("uJump",           3, "UJMP_STEP",  False),
+    Field("alu_op",          4, "ALU_OP_ADD", True),
+    Field("set_addr_c",      1, "false",      True),
+    Field("flags_opcode",    1, "false",      True),
+    Field("flags_ctl_c",     1, "false",      True),
+    Field("flags_ctl_nz",    1, "false",      True),
+    Field("al_inc",          1, "false",      True),
+    Field("zp_clr_set",      1, "false",      True),
+    Field("pc_inc",          1, "false",      True),
+    Field("pc_jmp",          1, "false",      True),
+    Field("write_en",        1, "false",      True),
+    Field("mem_read_en",     1, "false",      True),
+    Field("mem_write_en",    1, "false",      True),
+    Field("read_reg_sel1",   4, "REG_ZERO",   True),
+    Field("read_reg_sel2",   4, "REG_ZERO",   True),
+    Field("write_reg_sel",   4, "REG_ZERO",   True),
 ]
 UJUMP_WIDTH = 3      # the sequencer fragment slices the top 3 bits of the word
 FETCH_JUMP = "UJMP_FETCH"

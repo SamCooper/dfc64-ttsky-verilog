@@ -151,10 +151,12 @@ async def _run_assembly_test(dut, asm_file, info):
             actual_val = sram.memory[addr]
             assert actual_val == original_byte, \
                 f"[{base_name}] ROM corruption at {hex(addr)}: Expected {hex(original_byte)}, got {hex(actual_val)}"
-    except:
-        print (f"[{base_name}] All writes:")
-        for k,v in sorted(sram.writes):
-            print (f"[{base_name}] : {hex(k)}: {hex(v)}")
+    except BaseException:
+        dut._log.error(f"[{base_name}] RAM writes (latest value per address):")
+        for addr, value in sorted(sram.writes.items()):
+            dut._log.error(f"[{base_name}]   ${addr:04X}: ${value:02X}")
+        if not sram.writes:
+            dut._log.error(f"[{base_name}]   none")
         raise
 
     dut._log.info(f"Passed: {base_name} (RAM untouched, ROM secure)")
