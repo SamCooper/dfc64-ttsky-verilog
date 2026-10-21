@@ -1,9 +1,13 @@
 {
     "08": {"id": "OP_PHP_IMP", "cycles": 7},
+    "18": {"id": "OP_CLC_IMP", "cycles": 4},
     "28": {"id": "OP_PLP_IMP", "cycles": 7},
+    "38": {"id": "OP_SEC_IMP", "cycles": 4},
     "48": {"id": "OP_PHA_IMP", "cycles": 7},
     "4C": {"id": "OP_JMP_ABS", "cycles": 8},
+    "58": {"id": "OP_CLI_IMP", "cycles": 4},
     "68": {"id": "OP_PLA_IMP", "cycles": 7},
+    "78": {"id": "OP_SEI_IMP", "cycles": 4},
     "81": {"id": "OP_STA_IND_X", "cycles": 12},
     "84": {"id": "OP_STY_ZP", "cycles": 7},
     "85": {"id": "OP_STA_ZP", "cycles": 7},
@@ -36,9 +40,12 @@
     "B4": {"id": "OP_LDY_ZP_X", "cycles": 7},
     "B5": {"id": "OP_LDA_ZP_X", "cycles": 7},
     "B6": {"id": "OP_LDX_ZP_Y", "cycles": 7},
+    "B8": {"id": "OP_CLV_IMP", "cycles": 4},
     "B9": {"id": "OP_LDA_ABS_Y", "cycles": 10},
     "BA": {"id": "OP_TSX_IMP", "cycles": 4},
     "BC": {"id": "OP_LDY_ABS_X", "cycles": 10},
     "BD": {"id": "OP_LDA_ABS_X", "cycles": 10},
-    "BE": {"id": "OP_LDX_ABS_Y", "cycles": 10}
+    "BE": {"id": "OP_LDX_ABS_Y", "cycles": 10},
+    "D8": {"id": "OP_CLD_IMP", "cycles": 4},
+    "F8": {"id": "OP_SED_IMP", "cycles": 4}
 }

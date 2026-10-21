@@ -52,19 +52,19 @@ The [Opcode Matrix](#opcode-matrix) is a 16×16 grid that cross-checks where eac
 | [Arithmetic Operations](#arithmetic-operations) | 2 | 16 | 0 | 16 | 16 | 0% |
 | [Logical Operations](#logical-operations) | 3 | 24 | 0 | 24 | 24 | 0% |
 | [Shift & Rotate Instructions](#shift--rotate-instructions) | 4 | 20 | 0 | 20 | 20 | 0% |
-| [Flag Instructions](#flag-instructions) | 7 | 7 | 0 | 7 | 7 | 0% |
+| [Flag Instructions](#flag-instructions) | 7 | 7 | 7 | 0 | 0 | 100% |
 | [Comparisons](#comparisons) | 3 | 14 | 0 | 14 | 14 | 0% |
 | [Conditional Branch Instructions](#conditional-branch-instructions) | 8 | 8 | 0 | 8 | 8 | 0% |
 | [Jumps & Subroutines](#jumps--subroutines) | 3 | 4 | 1 | 3 | 3 | 25% |
 | [Interrupts](#interrupts) | 2 | 2 | 0 | 2 | 2 | 0% |
 | [Other](#other) | 2 | 3 | 1 | 2 | 2 | 33% |
-| **Total** | **56** | **151** | **43** | **108** | **108** | **28%** |
+| **Total** | **56** | **151** | **50** | **101** | **101** | **33%** |
 
 ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can be completed first. These two rows are not included in the opcode counts above.
 
 <!-- results:start -->
 
-**Last results:** 43 passed, 110 failed, 0 not run (of 153 tests).
+**Last results:** 50 passed, 103 failed, 0 not run (of 153 tests).
 
 **Decimal mode:** 0 of 2 done (0%).
 
@@ -103,10 +103,6 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | [brk](test/asm_tests/brk.asm) | [brk] RAM mismatch at 0x1ec: Expected 0x34, got 0x0 |
 | [bvc](test/asm_tests/bvc.asm) | [bvc] RAM mismatch at 0x300: Expected 0x1, got 0xee |
 | [bvs](test/asm_tests/bvs.asm) | [bvs] RAM mismatch at 0x300: Expected 0x1, got 0xee |
-| [clc](test/asm_tests/clc.asm) | [clc] RAM mismatch at 0x1fd: Expected 0x30, got 0x31 |
-| [cld](test/asm_tests/cld.asm) | [cld] RAM mismatch at 0x1fd: Expected 0x30, got 0x38 |
-| [cli](test/asm_tests/cli.asm) | [cli] RAM mismatch at 0x1fd: Expected 0x30, got 0x34 |
-| [clv](test/asm_tests/clv.asm) | [clv] RAM mismatch at 0x1fd: Expected 0x30, got 0x70 |
 | [cmp_abs](test/asm_tests/cmp_abs.asm) | [cmp_abs] RAM mismatch at 0x1fc: Expected 0xf4, got 0x75 |
 | [cmp_abs_x](test/asm_tests/cmp_abs_x.asm) | [cmp_abs_x] RAM mismatch at 0x1fc: Expected 0xf4, got 0x75 |
 | [cmp_abs_y](test/asm_tests/cmp_abs_y.asm) | [cmp_abs_y] RAM mismatch at 0x1fc: Expected 0xf4, got 0x75 |
@@ -177,9 +173,6 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | [sbc_ind_y](test/asm_tests/sbc_ind_y.asm) | [sbc_ind_y] RAM mismatch at 0x1fc: Expected 0x75, got 0xb4 |
 | [sbc_zp](test/asm_tests/sbc_zp.asm) | [sbc_zp] RAM mismatch at 0x1fc: Expected 0x75, got 0xb4 |
 | [sbc_zp_x](test/asm_tests/sbc_zp_x.asm) | [sbc_zp_x] RAM mismatch at 0x1fc: Expected 0x75, got 0xb4 |
-| [sec](test/asm_tests/sec.asm) | [sec] RAM mismatch at 0x1fc: Expected 0xff, got 0xfe |
-| [sed](test/asm_tests/sed.asm) | [sed] RAM mismatch at 0x1fc: Expected 0xff, got 0xf7 |
-| [sei](test/asm_tests/sei.asm) | [sei] RAM mismatch at 0x1fc: Expected 0xff, got 0xfb |
 
 <!-- results:end -->
 
@@ -192,7 +185,7 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | `abs,X` | absolute,X | `OPC oper,X` | 15 | 3 | 20% |
 | `abs,Y` | absolute,Y | `OPC oper,Y` | 9 | 3 | 33% |
 | `#` | immediate | `OPC #oper` | 11 | 3 | 27% |
-| `impl` | implied | `OPC` | 25 | 11 | 44% |
+| `impl` | implied | `OPC` | 25 | 18 | 72% |
 | `ind` | indirect | `OPC (oper)` | 1 | 0 | 0% |
 | `X,ind` | (indirect,X) | `OPC (oper,X)` | 8 | 2 | 25% |
 | `ind,Y` | (indirect),Y | `OPC (oper),Y` | 8 | 2 | 25% |
@@ -627,71 +620,71 @@ Flags affected: `N Z C`
 
 Flags affected: `C=0`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $18 | implied | `CLC` | 1 | 2 | | [clc.asm](test/asm_tests/clc.asm) / [clc.json](test/asm_tests/clc.json) |
+| [x] | $18 | implied | `CLC` | 1 | 2 | 4 | [clc.asm](test/asm_tests/clc.asm) / [clc.json](test/asm_tests/clc.json) |
 
 #### CLD: Clear Decimal Mode
 
 Flags affected: `D=0`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $D8 | implied | `CLD` | 1 | 2 | | [cld.asm](test/asm_tests/cld.asm) / [cld.json](test/asm_tests/cld.json) |
+| [x] | $D8 | implied | `CLD` | 1 | 2 | 4 | [cld.asm](test/asm_tests/cld.asm) / [cld.json](test/asm_tests/cld.json) |
 
 #### CLI: Clear Interrupt Disable Bit
 
 Flags affected: `I=0`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $58 | implied | `CLI` | 1 | 2 | | [cli.asm](test/asm_tests/cli.asm) / [cli.json](test/asm_tests/cli.json) |
+| [x] | $58 | implied | `CLI` | 1 | 2 | 4 | [cli.asm](test/asm_tests/cli.asm) / [cli.json](test/asm_tests/cli.json) |
 
 #### CLV: Clear Overflow Flag
 
 Flags affected: `V=0`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $B8 | implied | `CLV` | 1 | 2 | | [clv.asm](test/asm_tests/clv.asm) / [clv.json](test/asm_tests/clv.json) |
+| [x] | $B8 | implied | `CLV` | 1 | 2 | 4 | [clv.asm](test/asm_tests/clv.asm) / [clv.json](test/asm_tests/clv.json) |
 
 #### SEC: Set Carry Flag
 
 Flags affected: `C=1`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $38 | implied | `SEC` | 1 | 2 | | [sec.asm](test/asm_tests/sec.asm) / [sec.json](test/asm_tests/sec.json) |
+| [x] | $38 | implied | `SEC` | 1 | 2 | 4 | [sec.asm](test/asm_tests/sec.asm) / [sec.json](test/asm_tests/sec.json) |
 
 #### SED: Set Decimal Flag
 
 Flags affected: `D=1`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $F8 | implied | `SED` | 1 | 2 | | [sed.asm](test/asm_tests/sed.asm) / [sed.json](test/asm_tests/sed.json) |
+| [x] | $F8 | implied | `SED` | 1 | 2 | 4 | [sed.asm](test/asm_tests/sed.asm) / [sed.json](test/asm_tests/sed.json) |
 
 #### SEI: Set Interrupt Disable Status
 
 Flags affected: `I=1`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $78 | implied | `SEI` | 1 | 2 | | [sei.asm](test/asm_tests/sei.asm) / [sei.json](test/asm_tests/sei.json) |
+| [x] | $78 | implied | `SEI` | 1 | 2 | 4 | [sei.asm](test/asm_tests/sei.asm) / [sei.json](test/asm_tests/sei.json) |
 
 ### Comparisons
 

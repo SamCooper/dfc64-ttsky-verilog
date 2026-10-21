@@ -44,10 +44,11 @@ ROM_SIZE = 256
 Field = namedtuple("Field", "name width default output")
 FIELDS = [
     Field("uJump",           3, "UJMP_STEP", False),
-    Field("reg_sr_set",      1, "false",     True),
-    Field("reg_sr_full_set", 1, "false",     True),
     Field("alu_sub",         1, "false",     True),
     Field("set_addr_c",      1, "false",     True),
+    Field("flags_opcode",    1, "false",     True),
+    Field("flags_ctl_c",     1, "false",     True),
+    Field("flags_ctl_nz",    1, "false",     True),
     Field("al_inc",          1, "false",     True),
     Field("zp_clr_set",      1, "false",     True),
     Field("pc_inc",          1, "false",     True),

@@ -27,15 +27,17 @@ module tt_um_samcooper_dfc64 (
     wire  [7:0] sr;
 
     wire alu_carry;
-    wire alu_zero;
     wire alu_negative;
+    wire alu_overflow;
+    wire alu_zero;
 
-    wire reg_sr_set;
-    wire reg_sr_full_set;
     wire alu_sub;
     wire set_addr_c;
     wire pc_jmp;
     wire pc_inc;
+    wire flags_opcode;
+    wire flags_ctl_c;
+    wire flags_ctl_nz;
 
     wire        write_en;
     wire [3:0]  read_reg_sel1;
@@ -68,49 +70,53 @@ module tt_um_samcooper_dfc64 (
     );
 
     dfc64_sr status_register (
-        .clk(clk),
-        .rst_n(rst_n),
+      .clk(clk),
+      .rst_n(rst_n),
 
-        .write_enable(reg_sr_set),
-        .full_write_mode(reg_sr_full_set), // 0 = Update individual flags, 1 = Overwrite all
-        
-        .full_word_in(alu_result),     // From standard data bus (e.g., for POP instruction)
-        .alu_carry_in(alu_carry),    // From ALU
-        .alu_zero_in(alu_zero),     // From ALU
-        .alu_negative_in(alu_negative), // From ALU
+      .flags_opcode(flags_opcode),
+      .ctl_carry(flags_ctl_c),
+      .ctl_nz(flags_ctl_nz),
 
-        .status_out(sr)
+      .opcode_in(ir[7:0]),
+      .full_word_in(alu_result),
+
+      .alu_carry_in(alu_carry),    // From ALU
+      .alu_negative_in(alu_negative), // From ALU
+      .alu_overflow_in(alu_overflow), // From ALU
+      .alu_zero_in(alu_zero),     // From ALU
+
+      .status_out(sr)
     );
 
     dfc64_data_path data_path (
-        .clk(clk),
-        .rst_n(rst_n),
+      .clk(clk),
+      .rst_n(rst_n),
 
-        // Control Signals (Decoded by the Control Unit)
-        .write_en(write_en),
-        .mem_write(mwe_set), 
+      // Control Signals (Decoded by the Control Unit)
+      .write_en(write_en),
+      .mem_write(mwe_set), 
 
-        // bus IO wires
-        .mem_in(uio_in),   // Data loaded from RAM
-        .mem_out(uio_out),   // Data loaded from RAM
-        .mem_oe(uio_oe),
-        .ale_set(ale_set),
-        .ahe_set(ahe_set),
-    
-        // Addresses
-        .read_reg1(read_reg_sel1),
-        .read_reg2(read_reg_sel2),
-        .write_reg(write_reg_sel),
-    
-        // 8-bit Data Sources
-        .alu_result(alu_result), // Result of a math operation
-        .pc(pc),
-        .sr(sr),
-    
-        // 8-bit Outputs
-        .ir_data(ir),
-        .read_data1(mux_data1),
-        .read_data2(mux_data2)
+      // bus IO wires
+      .mem_in(uio_in),   // Data loaded from RAM
+      .mem_out(uio_out),   // Data loaded from RAM
+      .mem_oe(uio_oe),
+      .ale_set(ale_set),
+      .ahe_set(ahe_set),
+  
+      // Addresses
+      .read_reg1(read_reg_sel1),
+      .read_reg2(read_reg_sel2),
+      .write_reg(write_reg_sel),
+  
+      // 8-bit Data Sources
+      .alu_result(alu_result), // Result of a math operation
+      .pc(pc),
+      .sr(sr),
+  
+      // 8-bit Outputs
+      .ir_data(ir),
+      .read_data1(mux_data1),
+      .read_data2(mux_data2)
     );
 
     dfc64_alu alu (
@@ -124,8 +130,9 @@ module tt_um_samcooper_dfc64 (
       .src_data2(mux_data2),
 
       .alu_carry(alu_carry),    // From ALU
-      .alu_zero(alu_zero),     // From ALU
       .alu_negative(alu_negative), // From ALU
+      .alu_overflow(alu_overflow), // From ALU
+      .alu_zero(alu_zero),     // From ALU
 
       .result_data(alu_result)
     );
@@ -136,10 +143,11 @@ module tt_um_samcooper_dfc64 (
       .ir(ir),
       .mem_in(uio_in),
 
-      .reg_sr_set(reg_sr_set),
-      .reg_sr_full_set(reg_sr_full_set),
       .alu_sub(alu_sub),
       .set_addr_c(set_addr_c),
+      .flags_opcode(flags_opcode),
+      .flags_ctl_c(flags_ctl_c),
+      .flags_ctl_nz(flags_ctl_nz),
       .al_inc(ai_set),
       .zp_clr_set(zp_clr_set),
       .pc_jmp(pc_jmp),
