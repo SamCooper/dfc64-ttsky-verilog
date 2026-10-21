@@ -33,7 +33,7 @@ module dfc64_reg_file (
     output reg [7:0]  rdata2      // Data out 2 (goes to ALU)
 );
     // The storage array: registers, each 8 bits wide
-    reg [7:0] rf [0:7];
+    reg [7:0] rf [0:6];
 
     initial begin
         rf[REG_IR] = OP_JMP_ABS;
@@ -75,7 +75,7 @@ module dfc64_reg_file (
         end
         else begin
             // Only write if Write Enable is high AND we aren't trying to overwrite R0
-            if (rst_n && we && rd != REG_ZERO && rd != REG_ONE) begin
+            if (rst_n && we && rd[3] == 0) begin
                 $display("%0t REG set %b %h!", $realtime, rd, wdata);
                 rf[rd] <= wdata; 
             end
