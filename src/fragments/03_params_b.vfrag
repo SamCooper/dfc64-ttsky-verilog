@@ -40,6 +40,13 @@
     localparam ALU_OP_ADC = 4'b0010;
     localparam ALU_OP_SBC = 4'b0011;
     localparam ALU_OP_CMP = 4'b0100;
+    localparam ALU_OP_AND = 4'b0101;
+    localparam ALU_OP_EOR = 4'b0110;
+    localparam ALU_OP_OR  = 4'b0111;
+    localparam ALU_OP_ASL = 4'b1000;
+    localparam ALU_OP_LSR = 4'b1001;
+    localparam ALU_OP_ROL = 4'b1010;
+    localparam ALU_OP_ROR = 4'b1011;
 
     initial begin
         micro_pc = 9'h0;

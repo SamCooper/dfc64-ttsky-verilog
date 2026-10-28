@@ -21,6 +21,13 @@ module dfc64_alu (
     localparam ALU_OP_ADC = 4'b0010;
     localparam ALU_OP_SBC = 4'b0011;
     localparam ALU_OP_CMP = 4'b0100;
+    localparam ALU_OP_AND = 4'b0101;
+    localparam ALU_OP_EOR = 4'b0110;
+    localparam ALU_OP_OR  = 4'b0111;
+    localparam ALU_OP_ASL = 4'b1000;
+    localparam ALU_OP_LSR = 4'b1001;
+    localparam ALU_OP_ROL = 4'b1010;
+    localparam ALU_OP_ROR = 4'b1011;
 
     reg bit_addr_c;
 
@@ -53,6 +60,27 @@ module dfc64_alu (
             ALU_OP_CMP: begin
                 result_data = add_sub_result;
                 alu_carry   = local_carry;
+            end
+            ALU_OP_AND: result_data = src_data1 & src_data2;
+            ALU_OP_EOR: result_data = src_data1 ^ src_data2;
+            ALU_OP_OR:  result_data = src_data1 | src_data2;
+            ALU_OP_ASL: begin
+                result_data[7:1] = src_data1[6:0];
+                alu_carry   = src_data1[7];
+            end
+            ALU_OP_LSR: begin
+                result_data[6:0] = src_data1[7:1];
+                alu_carry   = src_data1[0];
+            end
+            ALU_OP_ROL: begin
+                result_data[0] = carry_in;
+                result_data[7:1] = src_data1[6:0];
+                alu_carry   = src_data1[7];
+            end
+            ALU_OP_ROR: begin
+                result_data[7] = carry_in;
+                result_data[6:0] = src_data1[7:1];
+                alu_carry   = src_data1[0];
             end
             default: result_data = 8'b0;
         endcase
