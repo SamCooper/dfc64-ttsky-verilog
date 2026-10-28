@@ -3,7 +3,7 @@
     // =========================================================================
     // 3. THE OPCODE MAPPER (Combinational)
     // =========================================================================
-    wire [7:0] op = (micro_pc == 8'h02) ? mem_in : ir[7:0]; // Opcode being fetched (not yet in IR)
+    wire [7:0] op = (micro_pc == 9'h02) ? mem_in : ir[7:0]; // Opcode being fetched (not yet in IR)
     
    // 0 Extra Bytes: BRK/RTI/RTS, or ends in 8 or A
     wire needs_zero_extra = (op == 8'h00) || (op == 8'h40) || (op == 8'h60) || 

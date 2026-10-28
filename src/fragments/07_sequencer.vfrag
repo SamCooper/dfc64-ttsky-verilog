@@ -1,7 +1,7 @@
                     
                     // If unknown opcode, route to an error handler or back to fetch
                     default: begin
-                        dispatch_address = 8'h00; 
+                        dispatch_address = 9'h00; 
                     end
                 endcase
             end
@@ -34,8 +34,8 @@
                 UJMP_DISPATCH_3: begin
                     micro_pc <= (needs_two_extra) ? dispatch_address : micro_pc + 1;
                 end
-                UJMP_FETCH:    micro_pc <= 8'h00;
-                default:       micro_pc <= 8'h00;
+                UJMP_FETCH:    micro_pc <= 9'h00;
+                default:       micro_pc <= 9'h00;
             endcase
         end
     end

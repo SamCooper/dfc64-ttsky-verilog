@@ -20,28 +20,39 @@ module dfc64_alu (
     localparam ALU_OP_SUB = 4'b0001;
     localparam ALU_OP_ADC = 4'b0010;
     localparam ALU_OP_SBC = 4'b0011;
+    localparam ALU_OP_CMP = 4'b0100;
 
     reg bit_addr_c;
 
-    wire is_sub = (alu_op == ALU_OP_SBC);
+    wire is_sub = (alu_op == ALU_OP_SUB) || (alu_op == ALU_OP_SBC) || (alu_op == ALU_OP_CMP);
     wire [7:0] b_mux = is_sub ? ~src_data2 : src_data2;
+
+    reg add_cin;
+    always @(*) begin
+        case (alu_op)
+            ALU_OP_ADD: add_cin = set_addr_c & bit_addr_c;
+            ALU_OP_SUB,
+            ALU_OP_CMP: add_cin = 1'b1;
+            default:    add_cin = carry_in;
+        endcase
+    end
 
     wire local_carry;
     wire [7:0] add_sub_result;
-    assign {local_carry, add_sub_result} = src_data1 + b_mux + carry_in;
-
+    assign {local_carry, add_sub_result} = src_data1 + b_mux + add_cin;
 
     always @(*) begin
+        result_data = 8'b0;
+        alu_carry   = 1'b0;
+
         case (alu_op)
-            ALU_OP_ADD: result_data = src_data1 + src_data2 + (set_addr_c ? bit_addr_c : 0);
-            ALU_OP_SUB: result_data = src_data1 - src_data2;
-            ALU_OP_ADC: begin
+            ALU_OP_ADD,
+            ALU_OP_SUB: result_data = add_sub_result;
+            ALU_OP_ADC,
+            ALU_OP_SBC,
+            ALU_OP_CMP: begin
                 result_data = add_sub_result;
-                alu_carry = local_carry;
-            end
-            ALU_OP_SBC: begin
-                result_data = add_sub_result;
-                alu_carry = local_carry;
+                alu_carry   = local_carry;
             end
             default: result_data = 8'b0;
         endcase
@@ -57,11 +68,13 @@ module dfc64_alu (
 
     always @ (posedge clk or negedge rst_n) begin
         if (!rst_n)
-            bit_addr_c <= 0;
+            bit_addr_c <= 1'b0;
         else begin
-            if (!set_addr_c) 
-                bit_addr_c <= ((src_data1 + src_data2) < src_data1) ? 1 : 0;
-            $display("%0t ADDR C REG set %b %h %h!", $realtime, bit_addr_c, src_data1, src_data2);
+            if (alu_op == ALU_OP_ADD && !set_addr_c)
+                bit_addr_c <= local_carry;
+            `ifdef SIM
+                $display("%0t ADDR C REG set %b %h %h!", $realtime, bit_addr_c, src_data1, src_data2);
+            `endif
         end
     end
 

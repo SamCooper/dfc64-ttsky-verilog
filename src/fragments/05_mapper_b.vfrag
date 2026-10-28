@@ -1,7 +1,7 @@
 
                 // If unknown opcode, route to an error handler or back to fetch
                 default: begin
-                    dispatch_address = 8'h00; 
+                    dispatch_address = 9'h00; 
                 end
             endcase
         end else begin

@@ -36,7 +36,7 @@ DEST = os.path.join(SRC_DIR, "dfc64_control_unit.v")
 CYCLES_JSON = os.path.join(SRC_DIR, "opcode_cycles.json")
 
 FIRST_OPCODE_ADDR = 0x10
-ROM_SIZE = 256
+ROM_SIZE = 512
 
 # One entry per microword field, MSB first. `name` is both the JSON key and the name of
 # the module output the field drives; `output` False means the field is internal
@@ -221,7 +221,7 @@ def gen_rom(ctx):
             lines.append(f"        // {comment}")
         cells = [c + "," if i < len(cols) - 1 else c for i, c in enumerate(cols)]
         cells = [c.ljust(widths[i] + 1) if i < len(cols) - 1 else c for i, c in enumerate(cells)]
-        lines.append(f"        micro_rom[8'h{addr:02x}] = {{{' '.join(cells).rstrip()}}};")
+        lines.append(f"        micro_rom[9'h{addr:03x}] = {{{' '.join(cells).rstrip()}}};")
     return "\n".join(lines) + "\n"
 
 
@@ -237,7 +237,7 @@ def gen_dispatch(extra):
     def generate(ctx):
         group = [(n, a) for n, v, a in ctx["dispatch"] if needs_extra_bytes(v) == extra]
         width = max((len(n) for n, _ in group), default=0)
-        return "".join(f"                    {n + ':':<{width + 1}} dispatch_address = 8'h{a:02x};\n"
+        return "".join(f"                    {n + ':':<{width + 1}} dispatch_address = 9'h{a:03x};\n"
                        for n, a in group)
     return generate
 
