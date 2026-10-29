@@ -67,7 +67,7 @@ module tt_um_samcooper_dfc64 (
       .sr_n(sr[7]),
       .sr_v(sr[6]),
       .sr_z(sr[1]),
-      .jmp_op(ir[7:0]),
+      .jmp_op(ir[7:5]),
       .pc_input(ir[23:8]),
       .pc_output(pc)
     );
@@ -144,7 +144,7 @@ module tt_um_samcooper_dfc64 (
     dfc64_control_unit control_unit (
       .clk(clk),
       .rst_n(rst_n),
-      .ir(ir),
+      .ir(ir[7:0]),
       .mem_in(uio_in),
 
       .alu_op(alu_op),

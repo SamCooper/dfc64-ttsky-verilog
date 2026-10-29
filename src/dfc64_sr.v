@@ -29,7 +29,7 @@ module dfc64_sr (
     assign is_v_op[1:0] = opcode_in[1:0];
     assign is_v_op[3:2] = opcode_in[6:5];
 
-    always @ (posedge clk or negedge rst_n) begin
+    always @ (posedge clk) begin
         if (!rst_n) begin
             status_out <= 8'h0;
         end else begin
@@ -53,6 +53,7 @@ module dfc64_sr (
                         status_out[5] <= 1;
                         status_out[4] <= 1;
                     end
+                    default:;
                 endcase
             end else begin
                 if (ctl_carry == 1) status_out[FLAG_C] <= alu_carry_in;

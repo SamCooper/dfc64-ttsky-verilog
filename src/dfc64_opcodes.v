@@ -36,11 +36,11 @@ parameter OP_BVC_REL   = 8'h50; // Branch if Overflow Clear
 parameter OP_BVS_REL   = 8'h70; // Branch if Overflow Set
 
 // --- BIT: Bit Test ---
-parameter OP_BIT_ZP    = 8'h24;
-parameter OP_BIT_ABS   = 8'h2C;
+//parameter OP_BIT_ZP    = 8'h24;
+//parameter OP_BIT_ABS   = 8'h2C;
 
 // --- BRK: Force Interrupt ---
-parameter OP_BRK_IMP   = 8'h00;
+//parameter OP_BRK_IMP   = 8'h00;
 
 // --- CLEAR FLAG INSTRUCTIONS ---
 parameter OP_CLC_IMP   = 8'h18; // Clear Carry Flag
@@ -100,10 +100,10 @@ parameter OP_INY_IMP   = 8'hC8;
 
 // --- JMP: Jump ---
 parameter OP_JMP_ABS   = 8'h4C;
-parameter OP_JMP_IND   = 8'h6C;
+//parameter OP_JMP_IND   = 8'h6C;
 
 // --- JSR: Jump to Subroutine ---
-parameter OP_JSR_ABS   = 8'h20;
+//parameter OP_JSR_ABS   = 8'h20;
 
 // --- LDA: Load Accumulator ---
 parameter OP_LDA_IMM   = 8'hA9;
@@ -137,7 +137,7 @@ parameter OP_LSR_ABS   = 8'h4E;
 parameter OP_LSR_ABS_X = 8'h5E;
 
 // --- NOP: No Operation ---
-parameter OP_NOP_IMP   = 8'hEA;
+//parameter OP_NOP_IMP   = 8'hEA;
 
 // --- ORA: Logical Inclusive OR ---
 parameter OP_ORA_IMM   = 8'h09;
@@ -170,8 +170,8 @@ parameter OP_ROR_ABS   = 8'h6E;
 parameter OP_ROR_ABS_X = 8'h7E;
 
 // --- RETURNS ---
-parameter OP_RTI_IMP   = 8'h40; // Return from Interrupt
-parameter OP_RTS_IMP   = 8'h60; // Return from Subroutine
+//parameter OP_RTI_IMP   = 8'h40; // Return from Interrupt
+//parameter OP_RTS_IMP   = 8'h60; // Return from Subroutine
 
 // --- SBC: Subtract with Carry ---
 parameter OP_SBC_IMM   = 8'hE9;

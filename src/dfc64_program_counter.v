@@ -6,7 +6,7 @@ module dfc64_program_counter (
     input             sr_n,
     input             sr_v,
     input             sr_z,
-    input      [7:0]  jmp_op,
+    input      [2:0]  jmp_op,
     input      [15:0] pc_input,
     output reg [15:0] pc_output
 );
@@ -17,7 +17,7 @@ module dfc64_program_counter (
     reg [15:0] b_mux;
 
     always @(*) begin
-        case (jmp_op[7:5])
+        case (jmp_op)
             3'b000: b_mux = sr_n ? 16'b0 : {{8{pc_input[7]}}, pc_input[7:0]};
             3'b001: b_mux = sr_n ? {{8{pc_input[7]}}, pc_input[7:0]} : 16'b0;
             3'b010: b_mux = sr_v ? 16'b0 : {{8{pc_input[7]}}, pc_input[7:0]};
@@ -30,7 +30,7 @@ module dfc64_program_counter (
     end
 
 
-    always @ (posedge clk or negedge rst_n) begin
+    always @ (posedge clk) begin
         if (!rst_n) begin
             pc_output <= 16'hFFFC;
             `ifdef SIM
@@ -53,10 +53,11 @@ module dfc64_program_counter (
                 end
                 PC_OP_BRN: begin
                     `ifdef SIM
-                        $display("%0t BRN (%b) %b %h to %h!", $realtime, jmp_op[7:5], sr_c, b_mux, (pc_output + b_mux));
+                        $display("%0t BRN (%b) %b %h to %h!", $realtime, jmp_op, sr_c, b_mux, (pc_output + b_mux));
                     `endif
                     pc_output <= pc_output + b_mux;
                 end
+                default: ;
             endcase
         end
     end

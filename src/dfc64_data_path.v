@@ -30,6 +30,9 @@ module dfc64_data_path (
     output wire [7:0] read_data1,
     output wire [7:0] read_data2
 );
+    localparam REG_ALE   = 4'b1010;
+    localparam REG_AHE   = 4'b1011;
+
     // 1. THE MULTIPLEXER (Combinational Routing)
     // IOs: Enable path (active high: 0=input, 1=output)
     assign mem_oe = ((write_reg == REG_ALE) | (write_reg == REG_AHE) | mem_write) ? 8'hFF : 8'h00 ;

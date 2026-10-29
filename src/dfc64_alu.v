@@ -94,7 +94,7 @@ module dfc64_alu (
     assign alu_overflow = (a_sign == b_sign) && (res_sign != a_sign);
     assign alu_zero = (result_data == 8'b0);
 
-    always @ (posedge clk or negedge rst_n) begin
+    always @ (posedge clk) begin
         if (!rst_n)
             bit_addr_c <= 1'b0;
         else begin

@@ -2,7 +2,7 @@
 module dfc64_control_unit (
     input clk,     // clock
     input rst_n,   // reset_n - low to reset
-    input [23:0] ir,
+    input [7:0] ir,
     input [7:0]  mem_in,   // byte on the data bus (opcode being fetched)
 
     output [3:0] alu_op,
@@ -987,10 +987,14 @@ module dfc64_control_unit (
 
     always @(posedge clk) begin
         if (!rst_n) begin
-            $display("%0t Reset!", $realtime);
+            `ifdef SIM
+                $display("%0t Reset!", $realtime);
+            `endif
             micro_pc <= RESET_MICRO_PC; // On power-up, start at the Fetch Routine
         end else begin
-            $display("%0t Stage: %b %b %h %h %h", $realtime, current_micro_word, uJump, micro_pc, op, dispatch_address);
+            `ifdef SIM
+                $display("%0t Stage: %b %b %h %h %h", $realtime, current_micro_word, uJump, micro_pc, op, dispatch_address);
+            `endif
             case (uJump)
                 UJMP_STEP:     micro_pc <= micro_pc + 1;
                 UJMP_DISPATCH_1: begin

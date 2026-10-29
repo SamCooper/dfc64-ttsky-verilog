@@ -1,19 +1,3 @@
-parameter REG_IR    = 4'b0000;
-parameter REG_IR_L  = 4'b0001;
-parameter REG_IR_H  = 4'b0010;
-parameter REG_A     = 4'b0011;
-parameter REG_X     = 4'b0100;
-parameter REG_Y     = 4'b0101;
-parameter REG_SP    = 4'b0110;
-parameter REG_SR    = 4'b0111;
-parameter REG_PCL   = 4'b1000;
-parameter REG_PCH   = 4'b1001;
-parameter REG_ALE   = 4'b1010;
-parameter REG_AHE   = 4'b1011;
-parameter REG_MEM   = 4'b1100;
-parameter REG_ZERO  = 4'b1101;
-parameter REG_ONE   = 4'b1110;
-
 module dfc64_reg_file (
     input  wire        clk,
     input  wire        rst_n,
@@ -32,11 +16,27 @@ module dfc64_reg_file (
     output reg [7:0]  rdata1,     // Data out 1 (goes to ALU)
     output reg [7:0]  rdata2      // Data out 2 (goes to ALU)
 );
+    localparam REG_IR    = 4'b0000;
+    localparam REG_IR_L  = 4'b0001;
+    localparam REG_IR_H  = 4'b0010;
+//    localparam REG_A     = 4'b0011;
+//    localparam REG_X     = 4'b0100;
+//    localparam REG_Y     = 4'b0101;
+    localparam REG_SP    = 4'b0110;
+    localparam REG_SR    = 4'b0111;
+    localparam REG_PCL   = 4'b1000;
+    localparam REG_PCH   = 4'b1001;
+//    localparam REG_ALE   = 4'b1010;
+//    localparam REG_AHE   = 4'b1011;
+    localparam REG_MEM   = 4'b1100;
+    localparam REG_ZERO  = 4'b1101;
+    localparam REG_ONE   = 4'b1110;
+
     // The storage array: registers, each 8 bits wide
     reg [7:0] rf [0:6];
 
     initial begin
-        rf[REG_IR] = OP_JMP_ABS;
+        rf[REG_IR[2:0]] = OP_JMP_ABS;
     end
 
     // READ LOGIC (Combinational)
@@ -48,7 +48,7 @@ module dfc64_reg_file (
             REG_PCL:  rdata1 = pc[7:0];
             REG_PCH:  rdata1 = pc[15:8];
             REG_MEM:  rdata1 = mem_in;
-            default:  rdata1 = rf[rs1]; 
+            default:  rdata1 = rf[rs1[2:0]]; 
         endcase
     end
     always @(*) begin
@@ -59,19 +59,19 @@ module dfc64_reg_file (
             REG_PCL:  rdata2 = pc[7:0];
             REG_PCH:  rdata2 = pc[15:8];
             REG_MEM:  rdata2 = mem_in;
-            default:  rdata2 = rf[rs2]; 
+            default:  rdata2 = rf[rs2[2:0]]; 
         endcase
     end
 
-    assign ir_data[7:0] = rf[REG_IR];
-    assign ir_data[15:8] = rf[REG_IR_L];
-    assign ir_data[23:16] = rf[REG_IR_H];
+    assign ir_data[7:0] = rf[REG_IR[2:0]];
+    assign ir_data[15:8] = rf[REG_IR_L[2:0]];
+    assign ir_data[23:16] = rf[REG_IR_H[2:0]];
 
     // WRITE LOGIC (Synchronous)
-    always @ (posedge clk or negedge rst_n) begin
+    always @ (posedge clk) begin
         if (!rst_n) begin
-            rf[REG_IR] <= OP_JMP_ABS;
-            rf[REG_SP] <= 8'hFF;
+            rf[REG_IR[2:0]] <= OP_JMP_ABS;
+            rf[REG_SP[2:0]] <= 8'hFF;
         end
         else begin
             // Only write if Write Enable is high AND we aren't trying to overwrite R0
@@ -79,7 +79,7 @@ module dfc64_reg_file (
                 `ifdef SIM
                     $display("%0t REG set %b %h!", $realtime, rd, wdata);
                 `endif
-                rf[rd] <= wdata; 
+                rf[rd[2:0]] <= wdata; 
             end
         end
     end
