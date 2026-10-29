@@ -2,16 +2,16 @@
     "stages": [
         {"addr": "0x00", "read_reg_sel1": "REG_PCL", "write_reg_sel": "REG_ALE"},
         {"addr": "0x01", "read_reg_sel1": "REG_PCH", "write_reg_sel": "REG_AHE"},
-        {"addr": "0x02", "uJump": "UJMP_DISPATCH_1", "pc_inc": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR"},
+        {"addr": "0x02", "uJump": "UJMP_DISPATCH_1", "pc_op": "PC_OP_INC", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR"},
         {"addr": "0x03", "al_inc": "true"},
-        {"addr": "0x04", "uJump": "UJMP_DISPATCH_2", "pc_inc": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_L"},
+        {"addr": "0x04", "uJump": "UJMP_DISPATCH_2", "pc_op": "PC_OP_INC", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_L"},
         {"addr": "0x05", "al_inc": "true"},
-        {"addr": "0x06", "uJump": "UJMP_DISPATCH_3", "pc_inc": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_H"},
+        {"addr": "0x06", "uJump": "UJMP_DISPATCH_3", "pc_op": "PC_OP_INC", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_H"},
         {"addr": "0x07", "read_reg_sel1": "REG_PCL", "write_reg_sel": "REG_ALE"},
         {"addr": "0x08", "read_reg_sel1": "REG_PCH", "write_reg_sel": "REG_AHE"},
-        {"addr": "0x09", "pc_inc": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_L"},
+        {"addr": "0x09", "pc_op": "PC_OP_INC", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_L"},
         {"addr": "0x0a", "read_reg_sel1": "REG_PCL", "write_reg_sel": "REG_ALE"},
         {"addr": "0x0b", "read_reg_sel1": "REG_PCH", "write_reg_sel": "REG_AHE"},
-        {"addr": "0x0c", "uJump": "UJMP_DISPATCH_3", "pc_inc": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_H"}
+        {"addr": "0x0c", "uJump": "UJMP_DISPATCH_3", "pc_op": "PC_OP_INC", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_H"}
     ]
 }

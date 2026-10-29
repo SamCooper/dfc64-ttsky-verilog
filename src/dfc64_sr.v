@@ -46,7 +46,9 @@ module dfc64_sr (
                     OP_SED_IMP: status_out[FLAG_D] <= 1;
                     OP_SEI_IMP: status_out[FLAG_I] <= 1;
                     OP_PLP_IMP: begin
-                        $display("%0t SR full set %h!", $realtime, full_word_in);
+                        `ifdef SIM
+                            $display("%0t SR full set %h!", $realtime, full_word_in);
+                        `endif
                         status_out <= full_word_in;                
                         status_out[5] <= 1;
                         status_out[4] <= 1;
@@ -56,11 +58,15 @@ module dfc64_sr (
                 if (ctl_carry == 1) status_out[FLAG_C] <= alu_carry_in;
 
                 if (ctl_nz == 1) begin
-                    $display("%0t SR set C%b Z%b N%b V%b!", $realtime, alu_carry_in, alu_zero_in, alu_negative_in, alu_overflow_in);
+                    `ifdef SIM
+                        $display("%0t SR set C%b Z%b N%b V%b!", $realtime, alu_carry_in, alu_zero_in, alu_negative_in, alu_overflow_in);
+                    `endif
 
                     // need to handle V case of ADC and SBC
                     if (is_v_op == 4'b1101) begin
-                        $display("%0t SR set V opcode %b V%b!", $realtime, opcode_in, alu_overflow_in);
+                        `ifdef SIM
+                            $display("%0t SR set V opcode %b V%b!", $realtime, opcode_in, alu_overflow_in);
+                        `endif
                         status_out[FLAG_V] <= alu_overflow_in;
                     end
 

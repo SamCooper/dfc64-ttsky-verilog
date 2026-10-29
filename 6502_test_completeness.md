@@ -54,34 +54,26 @@ The [Opcode Matrix](#opcode-matrix) is a 16×16 grid that cross-checks where eac
 | [Shift & Rotate Instructions](#shift--rotate-instructions) | 4 | 20 | 20 | 0 | 0 | 100% |
 | [Flag Instructions](#flag-instructions) | 7 | 7 | 7 | 0 | 0 | 100% |
 | [Comparisons](#comparisons) | 3 | 14 | 14 | 0 | 0 | 100% |
-| [Conditional Branch Instructions](#conditional-branch-instructions) | 8 | 8 | 0 | 8 | 8 | 0% |
+| [Conditional Branch Instructions](#conditional-branch-instructions) | 8 | 8 | 8 | 0 | 0 | 100% |
 | [Jumps & Subroutines](#jumps--subroutines) | 3 | 4 | 1 | 3 | 3 | 25% |
 | [Interrupts](#interrupts) | 2 | 2 | 0 | 2 | 2 | 0% |
 | [Other](#other) | 2 | 3 | 1 | 2 | 2 | 33% |
-| **Total** | **56** | **151** | **136** | **15** | **15** | **90%** |
+| **Total** | **56** | **151** | **144** | **7** | **7** | **95%** |
 
 ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can be completed first. These two rows are not included in the opcode counts above.
 
 <!-- results:start -->
 
-**Last results:** 136 passed, 17 failed, 0 not run (of 153 tests).
+**Last results:** 144 passed, 9 failed, 0 not run (of 153 tests).
 
 **Decimal mode:** 0 of 2 done (0%).
 
 | Failing test | Reason |
 |--------------|--------|
 | [adc_imm_dec](test/asm_tests/adc_imm_dec.asm) | [adc_imm_dec] RAM mismatch at 0x1fa: Expected 0xbd, got 0xbc |
-| [bcc](test/asm_tests/bcc.asm) | [bcc] RAM mismatch at 0x300: Expected 0x1, got 0xee |
-| [bcs](test/asm_tests/bcs.asm) | [bcs] RAM mismatch at 0x300: Expected 0x1, got 0xee |
-| [beq](test/asm_tests/beq.asm) | [beq] RAM mismatch at 0x300: Expected 0x1, got 0xee |
 | [bit_abs](test/asm_tests/bit_abs.asm) | [bit_abs] RAM mismatch at 0x1fc: Expected 0xb5, got 0xf5 |
 | [bit_zp](test/asm_tests/bit_zp.asm) | [bit_zp] RAM mismatch at 0x1fc: Expected 0xb5, got 0xf5 |
-| [bmi](test/asm_tests/bmi.asm) | [bmi] RAM mismatch at 0x300: Expected 0x1, got 0xee |
-| [bne](test/asm_tests/bne.asm) | [bne] RAM mismatch at 0x300: Expected 0x1, got 0xee |
-| [bpl](test/asm_tests/bpl.asm) | [bpl] RAM mismatch at 0x300: Expected 0x1, got 0xee |
 | [brk](test/asm_tests/brk.asm) | [brk] RAM mismatch at 0x1ec: Expected 0x34, got 0x0 |
-| [bvc](test/asm_tests/bvc.asm) | [bvc] RAM mismatch at 0x300: Expected 0x1, got 0xee |
-| [bvs](test/asm_tests/bvs.asm) | [bvs] RAM mismatch at 0x300: Expected 0x1, got 0xee |
 | [jmp_ind](test/asm_tests/jmp_ind.asm) | [jmp_ind] RAM mismatch at 0x1fe: Expected 0x75, got 0x0 |
 | [jsr](test/asm_tests/jsr.asm) | [jsr] RAM mismatch at 0x100: Expected 0xc0, got 0x0 |
 | [rti](test/asm_tests/rti.asm) | [rti] RAM mismatch at 0x100: Expected 0xf3, got 0xc0 |
@@ -103,7 +95,7 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | `ind` | indirect | `OPC (oper)` | 1 | 0 | 0% |
 | `X,ind` | (indirect,X) | `OPC (oper,X)` | 8 | 8 | 100% |
 | `ind,Y` | (indirect),Y | `OPC (oper),Y` | 8 | 8 | 100% |
-| `rel` | relative | `OPC oper` | 8 | 0 | 0% |
+| `rel` | relative | `OPC oper` | 8 | 8 | 100% |
 | `zpg` | zeropage | `OPC oper` | 21 | 20 | 95% |
 | `zpg,X` | zeropage,X | `OPC oper,X` | 16 | 16 | 100% |
 | `zpg,Y` | zeropage,Y | `OPC oper,Y` | 2 | 2 | 100% |
@@ -649,81 +641,81 @@ Flags affected: `N Z C`
 
 Flags affected: `-`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $90 | relative | `BCC oper` | 2 | 2** | | [bcc.asm](test/asm_tests/bcc.asm) / [bcc.json](test/asm_tests/bcc.json) |
+| [x] | $90 | relative | `BCC oper` | 2 | 2** | 6 | [bcc.asm](test/asm_tests/bcc.asm) / [bcc.json](test/asm_tests/bcc.json) |
 
 #### BCS: Branch on Carry Set (C=1)
 
 Flags affected: `-`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $B0 | relative | `BCS oper` | 2 | 2** | | [bcs.asm](test/asm_tests/bcs.asm) / [bcs.json](test/asm_tests/bcs.json) |
+| [x] | $B0 | relative | `BCS oper` | 2 | 2** | 6 | [bcs.asm](test/asm_tests/bcs.asm) / [bcs.json](test/asm_tests/bcs.json) |
 
 #### BEQ: Branch on Result Zero (Z=1)
 
 Flags affected: `-`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $F0 | relative | `BEQ oper` | 2 | 2** | | [beq.asm](test/asm_tests/beq.asm) / [beq.json](test/asm_tests/beq.json) |
+| [x] | $F0 | relative | `BEQ oper` | 2 | 2** | 6 | [beq.asm](test/asm_tests/beq.asm) / [beq.json](test/asm_tests/beq.json) |
 
 #### BMI: Branch on Result Minus (N=1)
 
 Flags affected: `-`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $30 | relative | `BMI oper` | 2 | 2** | | [bmi.asm](test/asm_tests/bmi.asm) / [bmi.json](test/asm_tests/bmi.json) |
+| [x] | $30 | relative | `BMI oper` | 2 | 2** | 6 | [bmi.asm](test/asm_tests/bmi.asm) / [bmi.json](test/asm_tests/bmi.json) |
 
 #### BNE: Branch on Result not Zero (Z=0)
 
 Flags affected: `-`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $D0 | relative | `BNE oper` | 2 | 2** | | [bne.asm](test/asm_tests/bne.asm) / [bne.json](test/asm_tests/bne.json) |
+| [x] | $D0 | relative | `BNE oper` | 2 | 2** | 6 | [bne.asm](test/asm_tests/bne.asm) / [bne.json](test/asm_tests/bne.json) |
 
 #### BPL: Branch on Result Plus (N=0)
 
 Flags affected: `-`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $10 | relative | `BPL oper` | 2 | 2** | | [bpl.asm](test/asm_tests/bpl.asm) / [bpl.json](test/asm_tests/bpl.json) |
+| [x] | $10 | relative | `BPL oper` | 2 | 2** | 6 | [bpl.asm](test/asm_tests/bpl.asm) / [bpl.json](test/asm_tests/bpl.json) |
 
 #### BVC: Branch on Overflow Clear (V=0)
 
 Flags affected: `-`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $50 | relative | `BVC oper` | 2 | 2** | | [bvc.asm](test/asm_tests/bvc.asm) / [bvc.json](test/asm_tests/bvc.json) |
+| [x] | $50 | relative | `BVC oper` | 2 | 2** | 6 | [bvc.asm](test/asm_tests/bvc.asm) / [bvc.json](test/asm_tests/bvc.json) |
 
 #### BVS: Branch on Overflow Set (V=1)
 
 Flags affected: `-`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $70 | relative | `BVS oper` | 2 | 2** | | [bvs.asm](test/asm_tests/bvs.asm) / [bvs.json](test/asm_tests/bvs.json) |
+| [x] | $70 | relative | `BVS oper` | 2 | 2** | 6 | [bvs.asm](test/asm_tests/bvs.asm) / [bvs.json](test/asm_tests/bvs.json) |
 
 ### Jumps & Subroutines
 

@@ -33,8 +33,7 @@ module tt_um_samcooper_dfc64 (
 
     wire [3:0] alu_op;
     wire set_addr_c;
-    wire pc_jmp;
-    wire pc_inc;
+    wire [1:0] pc_op;
     wire flags_opcode;
     wire flags_ctl_c;
     wire flags_ctl_nz;
@@ -62,11 +61,15 @@ module tt_um_samcooper_dfc64 (
 
     dfc64_program_counter program_counter (
       .clk(clk),
-      .pc_output(pc),
-      .pc_input(ir[23:8]),
       .rst_n(rst_n),
-      .jmp(pc_jmp),
-      .inc(pc_inc)
+      .pc_op(pc_op),
+      .sr_c(sr[0]),
+      .sr_n(sr[7]),
+      .sr_v(sr[6]),
+      .sr_z(sr[1]),
+      .jmp_op(ir[7:0]),
+      .pc_input(ir[23:8]),
+      .pc_output(pc)
     );
 
     dfc64_sr status_register (
@@ -151,8 +154,7 @@ module tt_um_samcooper_dfc64 (
       .flags_ctl_nz(flags_ctl_nz),
       .al_inc(ai_set),
       .zp_clr_set(zp_clr_set),
-      .pc_jmp(pc_jmp),
-      .pc_inc(pc_inc),
+      .pc_op(pc_op),
 
       .mem_write_en(mwe_set),
       .mem_read_en(mre_set),

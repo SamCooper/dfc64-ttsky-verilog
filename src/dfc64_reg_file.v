@@ -76,7 +76,9 @@ module dfc64_reg_file (
         else begin
             // Only write if Write Enable is high AND we aren't trying to overwrite R0
             if (rst_n && we && rd[3] == 0) begin
-                $display("%0t REG set %b %h!", $realtime, rd, wdata);
+                `ifdef SIM
+                    $display("%0t REG set %b %h!", $realtime, rd, wdata);
+                `endif
                 rf[rd] <= wdata; 
             end
         end

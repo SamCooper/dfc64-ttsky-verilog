@@ -1,7 +1,31 @@
 {
     "opcodes": [
         {"id": "OP_JMP_ABS", "stages": [
-            {"uJump": "UJMP_FETCH", "pc_jmp": "true"}
+            {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_JMP"}
+        ]},
+        {"id": "OP_BCC_REL", "stages": [
+            {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_BRN"}
+        ]},
+        {"id": "OP_BCS_REL", "stages": [
+            {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_BRN"}
+        ]},
+        {"id": "OP_BEQ_REL", "stages": [
+            {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_BRN"}
+        ]},
+        {"id": "OP_BNE_REL", "stages": [
+            {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_BRN"}
+        ]},
+        {"id": "OP_BMI_REL", "stages": [
+            {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_BRN"}
+        ]},
+        {"id": "OP_BPL_REL", "stages": [
+            {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_BRN"}
+        ]},
+        {"id": "OP_BVC_REL", "stages": [
+            {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_BRN"}
+        ]},
+        {"id": "OP_BVS_REL", "stages": [
+            {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_BRN"}
         ]},
         {"id": "OP_ADC_IMM", "stages": [
             {"uJump": "UJMP_FETCH", "alu_op": "ALU_OP_ADC", "flags_ctl_nz": "true", "flags_ctl_c": "true", "write_en": "true", "read_reg_sel1": "REG_A", "read_reg_sel2": "REG_IR_L", "write_reg_sel": "REG_A"}

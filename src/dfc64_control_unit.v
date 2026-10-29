@@ -12,8 +12,7 @@ module dfc64_control_unit (
     output       flags_ctl_nz,
     output       al_inc,
     output       zp_clr_set,
-    output       pc_inc,
-    output       pc_jmp,
+    output [1:0] pc_op,
     output       write_en,
     output       mem_read_en,
     output       mem_write_en,
@@ -62,6 +61,11 @@ module dfc64_control_unit (
     localparam REG_ZERO  = 4'b1101;
     localparam REG_ONE   = 4'b1110;
 
+    localparam PC_OP_NOP = 2'b00;
+    localparam PC_OP_INC = 2'b01;
+    localparam PC_OP_JMP = 2'b10;
+    localparam PC_OP_BRN = 2'b11;
+
     localparam ALU_OP_ADD = 4'b0000;
     localparam ALU_OP_SUB = 4'b0001;
     localparam ALU_OP_ADC = 4'b0010;
@@ -80,682 +84,706 @@ module dfc64_control_unit (
         // --- 0x00: INSTRUCTION FETCH ROUTINE ---
         // Every CPU cycle starts here. We read RAM, increment PC, and decode.
         // fixed fetch/decode stage
-        micro_rom[9'h000] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCL,  REG_ZERO, REG_ALE};
-        micro_rom[9'h001] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCH,  REG_ZERO, REG_AHE};
-        micro_rom[9'h002] = {UJMP_DISPATCH_1, ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR};
-        micro_rom[9'h003] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h004] = {UJMP_DISPATCH_2, ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-        micro_rom[9'h005] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h006] = {UJMP_DISPATCH_3, ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h007] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCL,  REG_ZERO, REG_ALE};
-        micro_rom[9'h008] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCH,  REG_ZERO, REG_AHE};
-        micro_rom[9'h009] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-        micro_rom[9'h00a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCL,  REG_ZERO, REG_ALE};
-        micro_rom[9'h00b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_PCH,  REG_ZERO, REG_AHE};
-        micro_rom[9'h00c] = {UJMP_DISPATCH_3, ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h000] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_PCL,  REG_ZERO, REG_ALE};
+        micro_rom[9'h001] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_PCH,  REG_ZERO, REG_AHE};
+        micro_rom[9'h002] = {UJMP_DISPATCH_1, ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_INC, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR};
+        micro_rom[9'h003] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h004] = {UJMP_DISPATCH_2, ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_INC, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+        micro_rom[9'h005] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h006] = {UJMP_DISPATCH_3, ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_INC, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h007] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_PCL,  REG_ZERO, REG_ALE};
+        micro_rom[9'h008] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_PCH,  REG_ZERO, REG_AHE};
+        micro_rom[9'h009] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_INC, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+        micro_rom[9'h00a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_PCL,  REG_ZERO, REG_ALE};
+        micro_rom[9'h00b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_PCH,  REG_ZERO, REG_AHE};
+        micro_rom[9'h00c] = {UJMP_DISPATCH_3, ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_INC, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
 
         // OP_JMP_ABS
-        micro_rom[9'h010] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h010] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_JMP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+
+        // OP_BCC_REL
+        micro_rom[9'h011] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+
+        // OP_BCS_REL
+        micro_rom[9'h012] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+
+        // OP_BEQ_REL
+        micro_rom[9'h013] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+
+        // OP_BNE_REL
+        micro_rom[9'h014] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+
+        // OP_BMI_REL
+        micro_rom[9'h015] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+
+        // OP_BPL_REL
+        micro_rom[9'h016] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+
+        // OP_BVC_REL
+        micro_rom[9'h017] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+
+        // OP_BVS_REL
+        micro_rom[9'h018] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
         // OP_ADC_IMM
-        micro_rom[9'h011] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
+        micro_rom[9'h019] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
 
         // OP_ADC_ZP
-        micro_rom[9'h012] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h013] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h01a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h01b] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ADC_ZP_X
-        micro_rom[9'h014] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h015] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h01c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h01d] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ADC_ABS
-        micro_rom[9'h016] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h017] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h018] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h01e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h01f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h020] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ADC_ABS_X
-        micro_rom[9'h019] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h01a] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h01b] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h021] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h022] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h023] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ADC_ABS_Y
-        micro_rom[9'h01c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-        micro_rom[9'h01d] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h01e] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h024] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+        micro_rom[9'h025] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h026] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ADC_IND_X
-        micro_rom[9'h01f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h020] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-        micro_rom[9'h021] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h022] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h023] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h024] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h025] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h027] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h028] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+        micro_rom[9'h029] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h02a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h02b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h02c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h02d] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ADC_IND_Y
-        micro_rom[9'h026] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h027] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-        micro_rom[9'h028] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h029] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h02a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h02b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h02c] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h02e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h02f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+        micro_rom[9'h030] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h031] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h032] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h033] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h034] = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_SBC_IMM
-        micro_rom[9'h02d] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
+        micro_rom[9'h035] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
 
         // OP_SBC_ZP
-        micro_rom[9'h02e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h02f] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h036] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h037] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_SBC_ZP_X
-        micro_rom[9'h030] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h031] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h038] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h039] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_SBC_ABS
-        micro_rom[9'h032] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h033] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h034] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h03a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h03b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h03c] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_SBC_ABS_X
-        micro_rom[9'h035] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h036] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h037] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h03d] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h03e] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h03f] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_SBC_ABS_Y
-        micro_rom[9'h038] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-        micro_rom[9'h039] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h03a] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h040] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+        micro_rom[9'h041] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h042] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_SBC_IND_X
-        micro_rom[9'h03b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h03c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-        micro_rom[9'h03d] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h03e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h03f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h040] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h041] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h043] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h044] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+        micro_rom[9'h045] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h046] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h047] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h048] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h049] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_SBC_IND_Y
-        micro_rom[9'h042] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h043] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-        micro_rom[9'h044] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h045] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h046] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h047] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h048] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h04a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h04b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+        micro_rom[9'h04c] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h04d] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h04e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h04f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h050] = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_AND_IMM
-        micro_rom[9'h049] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
+        micro_rom[9'h051] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
 
         // OP_AND_ZP
-        micro_rom[9'h04a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h04b] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h052] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h053] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_AND_ZP_X
-        micro_rom[9'h04c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h04d] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h054] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h055] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_AND_ABS
-        micro_rom[9'h04e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h04f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h050] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h056] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h057] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h058] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_AND_ABS_X
-        micro_rom[9'h051] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h052] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h053] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h059] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h05a] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h05b] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_AND_ABS_Y
-        micro_rom[9'h054] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-        micro_rom[9'h055] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h056] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h05c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+        micro_rom[9'h05d] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h05e] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_AND_IND_X
-        micro_rom[9'h057] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h058] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-        micro_rom[9'h059] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h05a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h05b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h05c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h05d] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h05f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h060] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+        micro_rom[9'h061] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h062] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h063] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h064] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h065] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_AND_IND_Y
-        micro_rom[9'h05e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h05f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-        micro_rom[9'h060] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h061] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h062] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h063] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h064] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h066] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h067] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+        micro_rom[9'h068] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h069] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h06a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h06b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h06c] = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_EOR_IMM
-        micro_rom[9'h065] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
+        micro_rom[9'h06d] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
 
         // OP_EOR_ZP
-        micro_rom[9'h066] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h067] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h06e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h06f] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_EOR_ZP_X
-        micro_rom[9'h068] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h069] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h070] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h071] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_EOR_ABS
-        micro_rom[9'h06a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h06b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h06c] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h072] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h073] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h074] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_EOR_ABS_X
-        micro_rom[9'h06d] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h06e] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h06f] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h075] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h076] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h077] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_EOR_ABS_Y
-        micro_rom[9'h070] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-        micro_rom[9'h071] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h072] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h078] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+        micro_rom[9'h079] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h07a] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_EOR_IND_X
-        micro_rom[9'h073] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h074] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-        micro_rom[9'h075] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h076] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h077] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h078] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h079] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h07b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h07c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+        micro_rom[9'h07d] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h07e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h07f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h080] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h081] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_EOR_IND_Y
-        micro_rom[9'h07a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h07b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-        micro_rom[9'h07c] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h07d] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h07e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h07f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h080] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h082] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h083] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+        micro_rom[9'h084] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h085] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h086] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h087] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h088] = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ORA_IMM
-        micro_rom[9'h081] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
+        micro_rom[9'h089] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
 
         // OP_ORA_ZP
-        micro_rom[9'h082] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h083] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h08a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h08b] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ORA_ZP_X
-        micro_rom[9'h084] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h085] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h08c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h08d] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ORA_ABS
-        micro_rom[9'h086] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h087] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h088] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h08e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h08f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h090] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ORA_ABS_X
-        micro_rom[9'h089] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h08a] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h08b] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h091] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h092] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h093] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ORA_ABS_Y
-        micro_rom[9'h08c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-        micro_rom[9'h08d] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h08e] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h094] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+        micro_rom[9'h095] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h096] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ORA_IND_X
-        micro_rom[9'h08f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h090] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-        micro_rom[9'h091] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h092] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h093] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h094] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h095] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h097] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h098] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+        micro_rom[9'h099] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h09a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h09b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h09c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h09d] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_ORA_IND_Y
-        micro_rom[9'h096] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h097] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-        micro_rom[9'h098] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h099] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h09a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h09b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h09c] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+        micro_rom[9'h09e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h09f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+        micro_rom[9'h0a0] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h0a1] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h0a2] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0a3] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0a4] = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
         // OP_DEX_IMP
-        micro_rom[9'h09d] = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_X,    REG_ONE,  REG_X};
+        micro_rom[9'h0a5] = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_ONE,  REG_X};
 
         // OP_DEY_IMP
-        micro_rom[9'h09e] = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_Y,    REG_ONE,  REG_Y};
+        micro_rom[9'h0a6] = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_Y,    REG_ONE,  REG_Y};
 
         // OP_DEC_ZP
-        micro_rom[9'h09f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0a0] = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0a1] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0a7] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0a8] = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0a9] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_DEC_ZP_X
-        micro_rom[9'h0a2] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0a3] = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0a4] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0aa] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h0ab] = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0ac] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_DEC_ABS
-        micro_rom[9'h0a5] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0a6] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h0a7] = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0a8] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0ad] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0ae] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0af] = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0b0] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_DEC_ABS_X
-        micro_rom[9'h0a9] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0aa] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h0ab] = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0ac] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0b1] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h0b2] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0b3] = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0b4] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_INX_IMP
-        micro_rom[9'h0ad] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_X,    REG_ONE,  REG_X};
+        micro_rom[9'h0b5] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_ONE,  REG_X};
 
         // OP_INY_IMP
-        micro_rom[9'h0ae] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_Y,    REG_ONE,  REG_Y};
+        micro_rom[9'h0b6] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_Y,    REG_ONE,  REG_Y};
 
         // OP_INC_ZP
-        micro_rom[9'h0af] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0b0] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0b1] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0b7] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0b8] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0b9] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_INC_ZP_X
-        micro_rom[9'h0b2] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0b3] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0b4] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0ba] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h0bb] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0bc] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_INC_ABS
-        micro_rom[9'h0b5] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0b6] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h0b7] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0b8] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0bd] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0be] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0bf] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0c0] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_INC_ABS_X
-        micro_rom[9'h0b9] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0ba] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h0bb] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0bc] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0c1] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h0c2] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0c3] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0c4] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_ASL_ACC
-        micro_rom[9'h0bd] = {UJMP_FETCH,      ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
+        micro_rom[9'h0c5] = {UJMP_FETCH,      ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
 
         // OP_ASL_ZP
-        micro_rom[9'h0be] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0bf] = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0c0] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0c6] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0c7] = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0c8] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_ASL_ZP_X
-        micro_rom[9'h0c1] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0c2] = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0c3] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0c9] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h0ca] = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0cb] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_ASL_ABS
-        micro_rom[9'h0c4] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0c5] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h0c6] = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0c7] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0cc] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0cd] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0ce] = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0cf] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_ASL_ABS_X
-        micro_rom[9'h0c8] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0c9] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h0ca] = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0cb] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0d0] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h0d1] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0d2] = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0d3] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_LSR_ACC
-        micro_rom[9'h0cc] = {UJMP_FETCH,      ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
+        micro_rom[9'h0d4] = {UJMP_FETCH,      ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
 
         // OP_LSR_ZP
-        micro_rom[9'h0cd] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0ce] = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0cf] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0d5] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0d6] = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0d7] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_LSR_ZP_X
-        micro_rom[9'h0d0] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0d1] = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0d2] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0d8] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h0d9] = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0da] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_LSR_ABS
-        micro_rom[9'h0d3] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0d4] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h0d5] = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0d6] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0db] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0dc] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0dd] = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0de] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_LSR_ABS_X
-        micro_rom[9'h0d7] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0d8] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h0d9] = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0da] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0df] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h0e0] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0e1] = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0e2] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_ROL_ACC
-        micro_rom[9'h0db] = {UJMP_FETCH,      ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
+        micro_rom[9'h0e3] = {UJMP_FETCH,      ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
 
         // OP_ROL_ZP
-        micro_rom[9'h0dc] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0dd] = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0de] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0e4] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0e5] = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0e6] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_ROL_ZP_X
-        micro_rom[9'h0df] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0e0] = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0e1] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0e7] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h0e8] = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0e9] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_ROL_ABS
-        micro_rom[9'h0e2] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0e3] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h0e4] = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0e5] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0ea] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0eb] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0ec] = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0ed] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_ROL_ABS_X
-        micro_rom[9'h0e6] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0e7] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h0e8] = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0e9] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0ee] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h0ef] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0f0] = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0f1] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_ROR_ACC
-        micro_rom[9'h0ea] = {UJMP_FETCH,      ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
+        micro_rom[9'h0f2] = {UJMP_FETCH,      ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
 
         // OP_ROR_ZP
-        micro_rom[9'h0eb] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0ec] = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0ed] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0f3] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0f4] = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0f5] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_ROR_ZP_X
-        micro_rom[9'h0ee] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0ef] = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0f0] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0f6] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h0f7] = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0f8] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_ROR_ABS
-        micro_rom[9'h0f1] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0f2] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h0f3] = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0f4] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0f9] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h0fa] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0fb] = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h0fc] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_ROR_ABS_X
-        micro_rom[9'h0f5] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0f6] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h0f7] = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-        micro_rom[9'h0f8] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+        micro_rom[9'h0fd] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h0fe] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h0ff] = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+        micro_rom[9'h100] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
         // OP_CMP_IMM
-        micro_rom[9'h0f9] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_ZERO};
+        micro_rom[9'h101] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_ZERO};
 
         // OP_CMP_ZP
-        micro_rom[9'h0fa] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0fb] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+        micro_rom[9'h102] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h103] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
         // OP_CMP_ZP_X
-        micro_rom[9'h0fc] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h0fd] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+        micro_rom[9'h104] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h105] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
         // OP_CMP_ABS
-        micro_rom[9'h0fe] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h0ff] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h100] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+        micro_rom[9'h106] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h107] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h108] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
         // OP_CMP_ABS_X
-        micro_rom[9'h101] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h102] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h103] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+        micro_rom[9'h109] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h10a] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h10b] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
         // OP_CMP_ABS_Y
-        micro_rom[9'h104] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-        micro_rom[9'h105] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h106] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+        micro_rom[9'h10c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+        micro_rom[9'h10d] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h10e] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
         // OP_CMP_IND_X
-        micro_rom[9'h107] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h108] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-        micro_rom[9'h109] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h10a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h10b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h10c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h10d] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+        micro_rom[9'h10f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h110] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+        micro_rom[9'h111] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h112] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h113] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h114] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h115] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
         // OP_CMP_IND_Y
-        micro_rom[9'h10e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h10f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-        micro_rom[9'h110] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h111] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h112] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h113] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h114] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+        micro_rom[9'h116] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h117] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+        micro_rom[9'h118] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h119] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h11a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h11b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h11c] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
         // OP_CPX_IMM
-        micro_rom[9'h115] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_X,    REG_IR_L, REG_ZERO};
+        micro_rom[9'h11d] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_IR_L, REG_ZERO};
 
         // OP_CPX_ZP
-        micro_rom[9'h116] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h117] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_X,    REG_MEM,  REG_ZERO};
+        micro_rom[9'h11e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h11f] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_X,    REG_MEM,  REG_ZERO};
 
         // OP_CPX_ABS
-        micro_rom[9'h118] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h119] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h11a] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_X,    REG_MEM,  REG_ZERO};
+        micro_rom[9'h120] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h121] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h122] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_X,    REG_MEM,  REG_ZERO};
 
         // OP_CPY_IMM
-        micro_rom[9'h11b] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_Y,    REG_IR_L, REG_ZERO};
+        micro_rom[9'h123] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_Y,    REG_IR_L, REG_ZERO};
 
         // OP_CPY_ZP
-        micro_rom[9'h11c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h11d] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_Y,    REG_MEM,  REG_ZERO};
+        micro_rom[9'h124] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h125] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_Y,    REG_MEM,  REG_ZERO};
 
         // OP_CPY_ABS
-        micro_rom[9'h11e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h11f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h120] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_Y,    REG_MEM,  REG_ZERO};
+        micro_rom[9'h126] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h127] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h128] = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_Y,    REG_MEM,  REG_ZERO};
 
         // OP_LDA_IMM
-        micro_rom[9'h121] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_A};
+        micro_rom[9'h129] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_A};
 
         // OP_LDX_IMM
-        micro_rom[9'h122] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_X};
+        micro_rom[9'h12a] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_X};
 
         // OP_LDY_IMM
-        micro_rom[9'h123] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_Y};
+        micro_rom[9'h12b] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_Y};
 
         // OP_LDA_ZP
-        micro_rom[9'h124] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h125] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+        micro_rom[9'h12c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h12d] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
 
         // OP_LDX_ZP
-        micro_rom[9'h126] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h127] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
+        micro_rom[9'h12e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h12f] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
 
         // OP_LDY_ZP
-        micro_rom[9'h128] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h129] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
+        micro_rom[9'h130] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h131] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
 
         // OP_LDA_ZP_X
-        micro_rom[9'h12a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h12b] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+        micro_rom[9'h132] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h133] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
 
         // OP_LDX_ZP_Y
-        micro_rom[9'h12c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-        micro_rom[9'h12d] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
+        micro_rom[9'h134] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+        micro_rom[9'h135] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
 
         // OP_LDY_ZP_X
-        micro_rom[9'h12e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h12f] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
+        micro_rom[9'h136] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h137] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
 
         // OP_LDA_ABS
-        micro_rom[9'h130] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h131] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h132] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+        micro_rom[9'h138] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h139] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h13a] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
 
         // OP_LDX_ABS
-        micro_rom[9'h133] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h134] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h135] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
+        micro_rom[9'h13b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h13c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h13d] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
 
         // OP_LDY_ABS
-        micro_rom[9'h136] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h137] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h138] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
+        micro_rom[9'h13e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h13f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h140] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
 
         // OP_LDA_ABS_X
-        micro_rom[9'h139] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h13a] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h13b] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+        micro_rom[9'h141] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h142] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h143] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
 
         // OP_LDA_ABS_Y
-        micro_rom[9'h13c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-        micro_rom[9'h13d] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h13e] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+        micro_rom[9'h144] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+        micro_rom[9'h145] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h146] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
 
         // OP_LDX_ABS_Y
-        micro_rom[9'h13f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-        micro_rom[9'h140] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h141] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
+        micro_rom[9'h147] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+        micro_rom[9'h148] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h149] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
 
         // OP_LDY_ABS_X
-        micro_rom[9'h142] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h143] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h144] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
+        micro_rom[9'h14a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h14b] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h14c] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
 
         // OP_LDA_IND_X
-        micro_rom[9'h145] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h146] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-        micro_rom[9'h147] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h148] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h149] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h14a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h14b] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+        micro_rom[9'h14d] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h14e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+        micro_rom[9'h14f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h150] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h151] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h152] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h153] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
 
         // OP_LDA_IND_Y
-        micro_rom[9'h14c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h14d] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-        micro_rom[9'h14e] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h14f] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h150] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h151] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h152] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+        micro_rom[9'h154] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h155] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+        micro_rom[9'h156] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h157] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h158] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h159] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h15a] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
 
         // OP_CLC_IMP
-        micro_rom[9'h153] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h15b] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
         // OP_CLD_IMP
-        micro_rom[9'h154] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h15c] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
         // OP_CLI_IMP
-        micro_rom[9'h155] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h15d] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
         // OP_CLV_IMP
-        micro_rom[9'h156] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h15e] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
         // OP_SEC_IMP
-        micro_rom[9'h157] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h15f] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
         // OP_SED_IMP
-        micro_rom[9'h158] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h160] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
         // OP_SEI_IMP
-        micro_rom[9'h159] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h161] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
         // OP_STA_ZP
-        micro_rom[9'h15a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h15b] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+        micro_rom[9'h162] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h163] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
 
         // OP_STA_ZP_X
-        micro_rom[9'h15c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h15d] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+        micro_rom[9'h164] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h165] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
 
         // OP_STX_ZP
-        micro_rom[9'h15e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h15f] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_X,    REG_ZERO, REG_MEM};
+        micro_rom[9'h166] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h167] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_X,    REG_ZERO, REG_MEM};
 
         // OP_STX_ZP_Y
-        micro_rom[9'h160] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-        micro_rom[9'h161] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_X,    REG_ZERO, REG_MEM};
+        micro_rom[9'h168] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+        micro_rom[9'h169] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_X,    REG_ZERO, REG_MEM};
 
         // OP_STY_ZP
-        micro_rom[9'h162] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h163] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_Y,    REG_ZERO, REG_MEM};
+        micro_rom[9'h16a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h16b] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_Y,    REG_ZERO, REG_MEM};
 
         // OP_STY_ZP_X
-        micro_rom[9'h164] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h165] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_Y,    REG_ZERO, REG_MEM};
+        micro_rom[9'h16c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h16d] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_Y,    REG_ZERO, REG_MEM};
 
         // OP_STA_ABS
-        micro_rom[9'h166] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h167] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h168] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+        micro_rom[9'h16e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h16f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h170] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
 
         // OP_STA_ABS_X
-        micro_rom[9'h169] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h16a] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h16b] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+        micro_rom[9'h171] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h172] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h173] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
 
         // OP_STA_ABS_Y
-        micro_rom[9'h16c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-        micro_rom[9'h16d] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h16e] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+        micro_rom[9'h174] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+        micro_rom[9'h175] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h176] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
 
         // OP_STX_ABS
-        micro_rom[9'h16f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h170] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h171] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_X,    REG_ZERO, REG_MEM};
+        micro_rom[9'h177] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h178] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h179] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_X,    REG_ZERO, REG_MEM};
 
         // OP_STY_ABS
-        micro_rom[9'h172] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h173] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h174] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_Y,    REG_ZERO, REG_MEM};
+        micro_rom[9'h17a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h17b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h17c] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_Y,    REG_ZERO, REG_MEM};
 
         // OP_STA_IND_X
-        micro_rom[9'h175] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-        micro_rom[9'h176] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-        micro_rom[9'h177] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h178] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h179] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h17a] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h17b] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+        micro_rom[9'h17d] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+        micro_rom[9'h17e] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+        micro_rom[9'h17f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h180] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h181] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h182] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h183] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
 
         // OP_STA_IND_Y
-        micro_rom[9'h17c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h17d] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-        micro_rom[9'h17e] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-        micro_rom[9'h17f] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-        micro_rom[9'h180] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-        micro_rom[9'h181] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-        micro_rom[9'h182] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+        micro_rom[9'h184] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h185] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+        micro_rom[9'h186] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+        micro_rom[9'h187] = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+        micro_rom[9'h188] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+        micro_rom[9'h189] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+        micro_rom[9'h18a] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
 
         // OP_PHA_IMP
-        micro_rom[9'h183] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-        micro_rom[9'h184] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
-        micro_rom[9'h185] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
-        micro_rom[9'h186] = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+        micro_rom[9'h18b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+        micro_rom[9'h18c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
+        micro_rom[9'h18d] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+        micro_rom[9'h18e] = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
 
         // OP_PHP_IMP
-        micro_rom[9'h187] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-        micro_rom[9'h188] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
-        micro_rom[9'h189] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, REG_SR,   REG_ZERO, REG_MEM};
-        micro_rom[9'h18a] = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+        micro_rom[9'h18f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+        micro_rom[9'h190] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
+        micro_rom[9'h191] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_SR,   REG_ZERO, REG_MEM};
+        micro_rom[9'h192] = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
 
         // OP_PLA_IMP
-        micro_rom[9'h18b] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-        micro_rom[9'h18c] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-        micro_rom[9'h18d] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
-        micro_rom[9'h18e] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+        micro_rom[9'h193] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+        micro_rom[9'h194] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+        micro_rom[9'h195] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
+        micro_rom[9'h196] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
 
         // OP_PLP_IMP
-        micro_rom[9'h18f] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-        micro_rom[9'h190] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-        micro_rom[9'h191] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
-        micro_rom[9'h192] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_SR};
+        micro_rom[9'h197] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+        micro_rom[9'h198] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+        micro_rom[9'h199] = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
+        micro_rom[9'h19a] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_SR};
 
         // OP_TAX_IMP
-        micro_rom[9'h193] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_X};
+        micro_rom[9'h19b] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_X};
 
         // OP_TAY_IMP
-        micro_rom[9'h194] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_Y};
+        micro_rom[9'h19c] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_Y};
 
         // OP_TSX_IMP
-        micro_rom[9'h195] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_X};
+        micro_rom[9'h19d] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_X};
 
         // OP_TXA_IMP
-        micro_rom[9'h196] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_X,    REG_ZERO, REG_A};
+        micro_rom[9'h19e] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_ZERO, REG_A};
 
         // OP_TXS_IMP
-        micro_rom[9'h197] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_X,    REG_ZERO, REG_SP};
+        micro_rom[9'h19f] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_ZERO, REG_SP};
 
         // OP_TYA_IMP
-        micro_rom[9'h198] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, REG_Y,    REG_ZERO, REG_A};
+        micro_rom[9'h1a0] = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_Y,    REG_ZERO, REG_A};
     end
 
     // =========================================================================
@@ -778,31 +806,31 @@ module dfc64_control_unit (
     always @(*) begin
         if (needs_zero_extra) begin
             case (op)
-                    OP_DEX_IMP: dispatch_address = 9'h09d;
-                    OP_DEY_IMP: dispatch_address = 9'h09e;
-                    OP_INX_IMP: dispatch_address = 9'h0ad;
-                    OP_INY_IMP: dispatch_address = 9'h0ae;
-                    OP_ASL_ACC: dispatch_address = 9'h0bd;
-                    OP_LSR_ACC: dispatch_address = 9'h0cc;
-                    OP_ROL_ACC: dispatch_address = 9'h0db;
-                    OP_ROR_ACC: dispatch_address = 9'h0ea;
-                    OP_CLC_IMP: dispatch_address = 9'h153;
-                    OP_CLD_IMP: dispatch_address = 9'h154;
-                    OP_CLI_IMP: dispatch_address = 9'h155;
-                    OP_CLV_IMP: dispatch_address = 9'h156;
-                    OP_SEC_IMP: dispatch_address = 9'h157;
-                    OP_SED_IMP: dispatch_address = 9'h158;
-                    OP_SEI_IMP: dispatch_address = 9'h159;
-                    OP_PHA_IMP: dispatch_address = 9'h183;
-                    OP_PHP_IMP: dispatch_address = 9'h187;
-                    OP_PLA_IMP: dispatch_address = 9'h18b;
-                    OP_PLP_IMP: dispatch_address = 9'h18f;
-                    OP_TAX_IMP: dispatch_address = 9'h193;
-                    OP_TAY_IMP: dispatch_address = 9'h194;
-                    OP_TSX_IMP: dispatch_address = 9'h195;
-                    OP_TXA_IMP: dispatch_address = 9'h196;
-                    OP_TXS_IMP: dispatch_address = 9'h197;
-                    OP_TYA_IMP: dispatch_address = 9'h198;
+                    OP_DEX_IMP: dispatch_address = 9'h0a5;
+                    OP_DEY_IMP: dispatch_address = 9'h0a6;
+                    OP_INX_IMP: dispatch_address = 9'h0b5;
+                    OP_INY_IMP: dispatch_address = 9'h0b6;
+                    OP_ASL_ACC: dispatch_address = 9'h0c5;
+                    OP_LSR_ACC: dispatch_address = 9'h0d4;
+                    OP_ROL_ACC: dispatch_address = 9'h0e3;
+                    OP_ROR_ACC: dispatch_address = 9'h0f2;
+                    OP_CLC_IMP: dispatch_address = 9'h15b;
+                    OP_CLD_IMP: dispatch_address = 9'h15c;
+                    OP_CLI_IMP: dispatch_address = 9'h15d;
+                    OP_CLV_IMP: dispatch_address = 9'h15e;
+                    OP_SEC_IMP: dispatch_address = 9'h15f;
+                    OP_SED_IMP: dispatch_address = 9'h160;
+                    OP_SEI_IMP: dispatch_address = 9'h161;
+                    OP_PHA_IMP: dispatch_address = 9'h18b;
+                    OP_PHP_IMP: dispatch_address = 9'h18f;
+                    OP_PLA_IMP: dispatch_address = 9'h193;
+                    OP_PLP_IMP: dispatch_address = 9'h197;
+                    OP_TAX_IMP: dispatch_address = 9'h19b;
+                    OP_TAY_IMP: dispatch_address = 9'h19c;
+                    OP_TSX_IMP: dispatch_address = 9'h19d;
+                    OP_TXA_IMP: dispatch_address = 9'h19e;
+                    OP_TXS_IMP: dispatch_address = 9'h19f;
+                    OP_TYA_IMP: dispatch_address = 9'h1a0;
 
                 // If unknown opcode, route to an error handler or back to fetch
                 default: begin
@@ -812,71 +840,79 @@ module dfc64_control_unit (
         end else begin
             if (needs_one_extra) begin
                 case (op)
-                    OP_ADC_IMM:   dispatch_address = 9'h011;
-                    OP_ADC_ZP:    dispatch_address = 9'h012;
-                    OP_ADC_ZP_X:  dispatch_address = 9'h014;
-                    OP_ADC_IND_X: dispatch_address = 9'h01f;
-                    OP_ADC_IND_Y: dispatch_address = 9'h026;
-                    OP_SBC_IMM:   dispatch_address = 9'h02d;
-                    OP_SBC_ZP:    dispatch_address = 9'h02e;
-                    OP_SBC_ZP_X:  dispatch_address = 9'h030;
-                    OP_SBC_IND_X: dispatch_address = 9'h03b;
-                    OP_SBC_IND_Y: dispatch_address = 9'h042;
-                    OP_AND_IMM:   dispatch_address = 9'h049;
-                    OP_AND_ZP:    dispatch_address = 9'h04a;
-                    OP_AND_ZP_X:  dispatch_address = 9'h04c;
-                    OP_AND_IND_X: dispatch_address = 9'h057;
-                    OP_AND_IND_Y: dispatch_address = 9'h05e;
-                    OP_EOR_IMM:   dispatch_address = 9'h065;
-                    OP_EOR_ZP:    dispatch_address = 9'h066;
-                    OP_EOR_ZP_X:  dispatch_address = 9'h068;
-                    OP_EOR_IND_X: dispatch_address = 9'h073;
-                    OP_EOR_IND_Y: dispatch_address = 9'h07a;
-                    OP_ORA_IMM:   dispatch_address = 9'h081;
-                    OP_ORA_ZP:    dispatch_address = 9'h082;
-                    OP_ORA_ZP_X:  dispatch_address = 9'h084;
-                    OP_ORA_IND_X: dispatch_address = 9'h08f;
-                    OP_ORA_IND_Y: dispatch_address = 9'h096;
-                    OP_DEC_ZP:    dispatch_address = 9'h09f;
-                    OP_DEC_ZP_X:  dispatch_address = 9'h0a2;
-                    OP_INC_ZP:    dispatch_address = 9'h0af;
-                    OP_INC_ZP_X:  dispatch_address = 9'h0b2;
-                    OP_ASL_ZP:    dispatch_address = 9'h0be;
-                    OP_ASL_ZP_X:  dispatch_address = 9'h0c1;
-                    OP_LSR_ZP:    dispatch_address = 9'h0cd;
-                    OP_LSR_ZP_X:  dispatch_address = 9'h0d0;
-                    OP_ROL_ZP:    dispatch_address = 9'h0dc;
-                    OP_ROL_ZP_X:  dispatch_address = 9'h0df;
-                    OP_ROR_ZP:    dispatch_address = 9'h0eb;
-                    OP_ROR_ZP_X:  dispatch_address = 9'h0ee;
-                    OP_CMP_IMM:   dispatch_address = 9'h0f9;
-                    OP_CMP_ZP:    dispatch_address = 9'h0fa;
-                    OP_CMP_ZP_X:  dispatch_address = 9'h0fc;
-                    OP_CMP_IND_X: dispatch_address = 9'h107;
-                    OP_CMP_IND_Y: dispatch_address = 9'h10e;
-                    OP_CPX_IMM:   dispatch_address = 9'h115;
-                    OP_CPX_ZP:    dispatch_address = 9'h116;
-                    OP_CPY_IMM:   dispatch_address = 9'h11b;
-                    OP_CPY_ZP:    dispatch_address = 9'h11c;
-                    OP_LDA_IMM:   dispatch_address = 9'h121;
-                    OP_LDX_IMM:   dispatch_address = 9'h122;
-                    OP_LDY_IMM:   dispatch_address = 9'h123;
-                    OP_LDA_ZP:    dispatch_address = 9'h124;
-                    OP_LDX_ZP:    dispatch_address = 9'h126;
-                    OP_LDY_ZP:    dispatch_address = 9'h128;
-                    OP_LDA_ZP_X:  dispatch_address = 9'h12a;
-                    OP_LDX_ZP_Y:  dispatch_address = 9'h12c;
-                    OP_LDY_ZP_X:  dispatch_address = 9'h12e;
-                    OP_LDA_IND_X: dispatch_address = 9'h145;
-                    OP_LDA_IND_Y: dispatch_address = 9'h14c;
-                    OP_STA_ZP:    dispatch_address = 9'h15a;
-                    OP_STA_ZP_X:  dispatch_address = 9'h15c;
-                    OP_STX_ZP:    dispatch_address = 9'h15e;
-                    OP_STX_ZP_Y:  dispatch_address = 9'h160;
-                    OP_STY_ZP:    dispatch_address = 9'h162;
-                    OP_STY_ZP_X:  dispatch_address = 9'h164;
-                    OP_STA_IND_X: dispatch_address = 9'h175;
-                    OP_STA_IND_Y: dispatch_address = 9'h17c;
+                    OP_BCC_REL:   dispatch_address = 9'h011;
+                    OP_BCS_REL:   dispatch_address = 9'h012;
+                    OP_BEQ_REL:   dispatch_address = 9'h013;
+                    OP_BNE_REL:   dispatch_address = 9'h014;
+                    OP_BMI_REL:   dispatch_address = 9'h015;
+                    OP_BPL_REL:   dispatch_address = 9'h016;
+                    OP_BVC_REL:   dispatch_address = 9'h017;
+                    OP_BVS_REL:   dispatch_address = 9'h018;
+                    OP_ADC_IMM:   dispatch_address = 9'h019;
+                    OP_ADC_ZP:    dispatch_address = 9'h01a;
+                    OP_ADC_ZP_X:  dispatch_address = 9'h01c;
+                    OP_ADC_IND_X: dispatch_address = 9'h027;
+                    OP_ADC_IND_Y: dispatch_address = 9'h02e;
+                    OP_SBC_IMM:   dispatch_address = 9'h035;
+                    OP_SBC_ZP:    dispatch_address = 9'h036;
+                    OP_SBC_ZP_X:  dispatch_address = 9'h038;
+                    OP_SBC_IND_X: dispatch_address = 9'h043;
+                    OP_SBC_IND_Y: dispatch_address = 9'h04a;
+                    OP_AND_IMM:   dispatch_address = 9'h051;
+                    OP_AND_ZP:    dispatch_address = 9'h052;
+                    OP_AND_ZP_X:  dispatch_address = 9'h054;
+                    OP_AND_IND_X: dispatch_address = 9'h05f;
+                    OP_AND_IND_Y: dispatch_address = 9'h066;
+                    OP_EOR_IMM:   dispatch_address = 9'h06d;
+                    OP_EOR_ZP:    dispatch_address = 9'h06e;
+                    OP_EOR_ZP_X:  dispatch_address = 9'h070;
+                    OP_EOR_IND_X: dispatch_address = 9'h07b;
+                    OP_EOR_IND_Y: dispatch_address = 9'h082;
+                    OP_ORA_IMM:   dispatch_address = 9'h089;
+                    OP_ORA_ZP:    dispatch_address = 9'h08a;
+                    OP_ORA_ZP_X:  dispatch_address = 9'h08c;
+                    OP_ORA_IND_X: dispatch_address = 9'h097;
+                    OP_ORA_IND_Y: dispatch_address = 9'h09e;
+                    OP_DEC_ZP:    dispatch_address = 9'h0a7;
+                    OP_DEC_ZP_X:  dispatch_address = 9'h0aa;
+                    OP_INC_ZP:    dispatch_address = 9'h0b7;
+                    OP_INC_ZP_X:  dispatch_address = 9'h0ba;
+                    OP_ASL_ZP:    dispatch_address = 9'h0c6;
+                    OP_ASL_ZP_X:  dispatch_address = 9'h0c9;
+                    OP_LSR_ZP:    dispatch_address = 9'h0d5;
+                    OP_LSR_ZP_X:  dispatch_address = 9'h0d8;
+                    OP_ROL_ZP:    dispatch_address = 9'h0e4;
+                    OP_ROL_ZP_X:  dispatch_address = 9'h0e7;
+                    OP_ROR_ZP:    dispatch_address = 9'h0f3;
+                    OP_ROR_ZP_X:  dispatch_address = 9'h0f6;
+                    OP_CMP_IMM:   dispatch_address = 9'h101;
+                    OP_CMP_ZP:    dispatch_address = 9'h102;
+                    OP_CMP_ZP_X:  dispatch_address = 9'h104;
+                    OP_CMP_IND_X: dispatch_address = 9'h10f;
+                    OP_CMP_IND_Y: dispatch_address = 9'h116;
+                    OP_CPX_IMM:   dispatch_address = 9'h11d;
+                    OP_CPX_ZP:    dispatch_address = 9'h11e;
+                    OP_CPY_IMM:   dispatch_address = 9'h123;
+                    OP_CPY_ZP:    dispatch_address = 9'h124;
+                    OP_LDA_IMM:   dispatch_address = 9'h129;
+                    OP_LDX_IMM:   dispatch_address = 9'h12a;
+                    OP_LDY_IMM:   dispatch_address = 9'h12b;
+                    OP_LDA_ZP:    dispatch_address = 9'h12c;
+                    OP_LDX_ZP:    dispatch_address = 9'h12e;
+                    OP_LDY_ZP:    dispatch_address = 9'h130;
+                    OP_LDA_ZP_X:  dispatch_address = 9'h132;
+                    OP_LDX_ZP_Y:  dispatch_address = 9'h134;
+                    OP_LDY_ZP_X:  dispatch_address = 9'h136;
+                    OP_LDA_IND_X: dispatch_address = 9'h14d;
+                    OP_LDA_IND_Y: dispatch_address = 9'h154;
+                    OP_STA_ZP:    dispatch_address = 9'h162;
+                    OP_STA_ZP_X:  dispatch_address = 9'h164;
+                    OP_STX_ZP:    dispatch_address = 9'h166;
+                    OP_STX_ZP_Y:  dispatch_address = 9'h168;
+                    OP_STY_ZP:    dispatch_address = 9'h16a;
+                    OP_STY_ZP_X:  dispatch_address = 9'h16c;
+                    OP_STA_IND_X: dispatch_address = 9'h17d;
+                    OP_STA_IND_Y: dispatch_address = 9'h184;
                     
                     // If unknown opcode, route to an error handler or back to fetch
                     default: begin
@@ -886,50 +922,50 @@ module dfc64_control_unit (
             end else begin
                 case (op)
                     OP_JMP_ABS:   dispatch_address = 9'h010;
-                    OP_ADC_ABS:   dispatch_address = 9'h016;
-                    OP_ADC_ABS_X: dispatch_address = 9'h019;
-                    OP_ADC_ABS_Y: dispatch_address = 9'h01c;
-                    OP_SBC_ABS:   dispatch_address = 9'h032;
-                    OP_SBC_ABS_X: dispatch_address = 9'h035;
-                    OP_SBC_ABS_Y: dispatch_address = 9'h038;
-                    OP_AND_ABS:   dispatch_address = 9'h04e;
-                    OP_AND_ABS_X: dispatch_address = 9'h051;
-                    OP_AND_ABS_Y: dispatch_address = 9'h054;
-                    OP_EOR_ABS:   dispatch_address = 9'h06a;
-                    OP_EOR_ABS_X: dispatch_address = 9'h06d;
-                    OP_EOR_ABS_Y: dispatch_address = 9'h070;
-                    OP_ORA_ABS:   dispatch_address = 9'h086;
-                    OP_ORA_ABS_X: dispatch_address = 9'h089;
-                    OP_ORA_ABS_Y: dispatch_address = 9'h08c;
-                    OP_DEC_ABS:   dispatch_address = 9'h0a5;
-                    OP_DEC_ABS_X: dispatch_address = 9'h0a9;
-                    OP_INC_ABS:   dispatch_address = 9'h0b5;
-                    OP_INC_ABS_X: dispatch_address = 9'h0b9;
-                    OP_ASL_ABS:   dispatch_address = 9'h0c4;
-                    OP_ASL_ABS_X: dispatch_address = 9'h0c8;
-                    OP_LSR_ABS:   dispatch_address = 9'h0d3;
-                    OP_LSR_ABS_X: dispatch_address = 9'h0d7;
-                    OP_ROL_ABS:   dispatch_address = 9'h0e2;
-                    OP_ROL_ABS_X: dispatch_address = 9'h0e6;
-                    OP_ROR_ABS:   dispatch_address = 9'h0f1;
-                    OP_ROR_ABS_X: dispatch_address = 9'h0f5;
-                    OP_CMP_ABS:   dispatch_address = 9'h0fe;
-                    OP_CMP_ABS_X: dispatch_address = 9'h101;
-                    OP_CMP_ABS_Y: dispatch_address = 9'h104;
-                    OP_CPX_ABS:   dispatch_address = 9'h118;
-                    OP_CPY_ABS:   dispatch_address = 9'h11e;
-                    OP_LDA_ABS:   dispatch_address = 9'h130;
-                    OP_LDX_ABS:   dispatch_address = 9'h133;
-                    OP_LDY_ABS:   dispatch_address = 9'h136;
-                    OP_LDA_ABS_X: dispatch_address = 9'h139;
-                    OP_LDA_ABS_Y: dispatch_address = 9'h13c;
-                    OP_LDX_ABS_Y: dispatch_address = 9'h13f;
-                    OP_LDY_ABS_X: dispatch_address = 9'h142;
-                    OP_STA_ABS:   dispatch_address = 9'h166;
-                    OP_STA_ABS_X: dispatch_address = 9'h169;
-                    OP_STA_ABS_Y: dispatch_address = 9'h16c;
-                    OP_STX_ABS:   dispatch_address = 9'h16f;
-                    OP_STY_ABS:   dispatch_address = 9'h172;
+                    OP_ADC_ABS:   dispatch_address = 9'h01e;
+                    OP_ADC_ABS_X: dispatch_address = 9'h021;
+                    OP_ADC_ABS_Y: dispatch_address = 9'h024;
+                    OP_SBC_ABS:   dispatch_address = 9'h03a;
+                    OP_SBC_ABS_X: dispatch_address = 9'h03d;
+                    OP_SBC_ABS_Y: dispatch_address = 9'h040;
+                    OP_AND_ABS:   dispatch_address = 9'h056;
+                    OP_AND_ABS_X: dispatch_address = 9'h059;
+                    OP_AND_ABS_Y: dispatch_address = 9'h05c;
+                    OP_EOR_ABS:   dispatch_address = 9'h072;
+                    OP_EOR_ABS_X: dispatch_address = 9'h075;
+                    OP_EOR_ABS_Y: dispatch_address = 9'h078;
+                    OP_ORA_ABS:   dispatch_address = 9'h08e;
+                    OP_ORA_ABS_X: dispatch_address = 9'h091;
+                    OP_ORA_ABS_Y: dispatch_address = 9'h094;
+                    OP_DEC_ABS:   dispatch_address = 9'h0ad;
+                    OP_DEC_ABS_X: dispatch_address = 9'h0b1;
+                    OP_INC_ABS:   dispatch_address = 9'h0bd;
+                    OP_INC_ABS_X: dispatch_address = 9'h0c1;
+                    OP_ASL_ABS:   dispatch_address = 9'h0cc;
+                    OP_ASL_ABS_X: dispatch_address = 9'h0d0;
+                    OP_LSR_ABS:   dispatch_address = 9'h0db;
+                    OP_LSR_ABS_X: dispatch_address = 9'h0df;
+                    OP_ROL_ABS:   dispatch_address = 9'h0ea;
+                    OP_ROL_ABS_X: dispatch_address = 9'h0ee;
+                    OP_ROR_ABS:   dispatch_address = 9'h0f9;
+                    OP_ROR_ABS_X: dispatch_address = 9'h0fd;
+                    OP_CMP_ABS:   dispatch_address = 9'h106;
+                    OP_CMP_ABS_X: dispatch_address = 9'h109;
+                    OP_CMP_ABS_Y: dispatch_address = 9'h10c;
+                    OP_CPX_ABS:   dispatch_address = 9'h120;
+                    OP_CPY_ABS:   dispatch_address = 9'h126;
+                    OP_LDA_ABS:   dispatch_address = 9'h138;
+                    OP_LDX_ABS:   dispatch_address = 9'h13b;
+                    OP_LDY_ABS:   dispatch_address = 9'h13e;
+                    OP_LDA_ABS_X: dispatch_address = 9'h141;
+                    OP_LDA_ABS_Y: dispatch_address = 9'h144;
+                    OP_LDX_ABS_Y: dispatch_address = 9'h147;
+                    OP_LDY_ABS_X: dispatch_address = 9'h14a;
+                    OP_STA_ABS:   dispatch_address = 9'h16e;
+                    OP_STA_ABS_X: dispatch_address = 9'h171;
+                    OP_STA_ABS_Y: dispatch_address = 9'h174;
+                    OP_STX_ABS:   dispatch_address = 9'h177;
+                    OP_STY_ABS:   dispatch_address = 9'h17a;
                     
                     // If unknown opcode, route to an error handler or back to fetch
                     default: begin
@@ -982,8 +1018,7 @@ module dfc64_control_unit (
     assign flags_ctl_nz  = current_micro_word[19];
     assign al_inc        = current_micro_word[18];
     assign zp_clr_set    = current_micro_word[17];
-    assign pc_inc        = current_micro_word[16];
-    assign pc_jmp        = current_micro_word[15];
+    assign pc_op         = current_micro_word[16:15];
     assign write_en      = current_micro_word[14];
     assign mem_read_en   = current_micro_word[13];
     assign mem_write_en  = current_micro_word[12];
