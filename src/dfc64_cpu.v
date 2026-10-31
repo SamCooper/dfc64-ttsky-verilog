@@ -16,6 +16,9 @@ module tt_um_samcooper_dfc64 (
     input  wire       clk,      // clock
     input  wire       rst_n     // reset_n - low to reset
 );
+    wire irq_n;
+    wire nmi_n;
+
     wire ale_set;
     wire ahe_set;
     wire ai_set;
@@ -46,6 +49,9 @@ module tt_um_samcooper_dfc64 (
     wire [7:0] mux_data1;
     wire [7:0] mux_data2;
 
+    assign irq_n = ui_in[0];
+    assign nmi_n = ui_in[1];
+
     // The pins match the inputs of the off-chip 74HC163s and the memory (active-low where
     // the chip pin is active-low); inside the CPU every strobe is active-high.
     assign uo_out = {2'b0,
@@ -57,7 +63,7 @@ module tt_um_samcooper_dfc64 (
                      ~ale_set};     // [0] LOAD_L_n  -> PE_n of the lower counters
 
     // List all unused inputs to prevent warnings
-    wire _unused = &{ena, ui_in, 1'b0};
+    wire _unused = &{ena, ui_in[7:2], 1'b0};
 
     dfc64_program_counter program_counter (
       .clk(clk),
@@ -67,6 +73,7 @@ module tt_um_samcooper_dfc64 (
       .sr_n(sr[7]),
       .sr_v(sr[6]),
       .sr_z(sr[1]),
+      .brn_op(ir[4]),
       .jmp_op(ir[7:5]),
       .pc_input(ir[23:8]),
       .pc_output(pc)

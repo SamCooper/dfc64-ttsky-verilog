@@ -4,7 +4,7 @@ import os
 from asm_harness import register_tests
 
 # Directory holding the .asm/.json test pairs
-ASM_TEST_DIR = os.environ.get("ASM_TEST_DIR", "asm_tests/quick")
+ASM_TEST_DIR = os.environ.get("ASM_TEST_DIR", "asm_tests")
 
 # Results of each run are merged into this file, and the compliance report is
 # updated from it after every test (set ASM_UPDATE_REPORT=0 to skip the report).

@@ -6,12 +6,13 @@ module dfc64_program_counter (
     input             sr_n,
     input             sr_v,
     input             sr_z,
+    input             brn_op,
     input      [2:0]  jmp_op,
     input      [15:0] pc_input,
     output reg [15:0] pc_output
 );
     localparam PC_OP_INC = 2'b01;
-    localparam PC_OP_JMP = 2'b10;
+    localparam PC_OP_DEC = 2'b10;
     localparam PC_OP_BRN = 2'b11;
 
     reg [15:0] b_mux;
@@ -39,23 +40,30 @@ module dfc64_program_counter (
         end
         else begin
             case (pc_op)
-                PC_OP_JMP: begin
-                    `ifdef SIM
-                        $display("%0t JMP to %h!", $realtime, pc_input);
-                    `endif
-                    pc_output <= pc_input;
-                end
                 PC_OP_INC: begin
                     `ifdef SIM
-                        $display("%0t INC to %h!", $realtime, (pc_output + 1));
+                        $display("%0t PC INC to %h!", $realtime, (pc_output + 1));
                     `endif
                     pc_output <= pc_output + 1;
                 end
-                PC_OP_BRN: begin
+                PC_OP_DEC: begin
                     `ifdef SIM
-                        $display("%0t BRN (%b) %b %h to %h!", $realtime, jmp_op, sr_c, b_mux, (pc_output + b_mux));
+                        $display("%0t PC DEC to %h!", $realtime, (pc_output - 1));
                     `endif
-                    pc_output <= pc_output + b_mux;
+                    pc_output <= pc_output - 1;
+                end
+                PC_OP_BRN: begin
+                    if (brn_op) begin
+                        `ifdef SIM
+                            $display("%0t PC BRN (%b) %b %h to %h!", $realtime, jmp_op, sr_c, b_mux, (pc_output + b_mux));
+                        `endif
+                        pc_output <= pc_output + b_mux;
+                    end else begin
+                        `ifdef SIM
+                            $display("%0t PC JMP to %h!", $realtime, pc_input);
+                        `endif
+                        pc_output <= pc_input;
+                    end
                 end
                 default: ;
             endcase

@@ -55,16 +55,16 @@ The [Opcode Matrix](#opcode-matrix) is a 16×16 grid that cross-checks where eac
 | [Flag Instructions](#flag-instructions) | 7 | 7 | 7 | 0 | 0 | 100% |
 | [Comparisons](#comparisons) | 3 | 14 | 14 | 0 | 0 | 100% |
 | [Conditional Branch Instructions](#conditional-branch-instructions) | 8 | 8 | 8 | 0 | 0 | 100% |
-| [Jumps & Subroutines](#jumps--subroutines) | 3 | 4 | 1 | 3 | 3 | 25% |
-| [Interrupts](#interrupts) | 2 | 2 | 0 | 2 | 2 | 0% |
+| [Jumps & Subroutines](#jumps--subroutines) | 3 | 4 | 4 | 0 | 0 | 100% |
+| [Interrupts](#interrupts) | 2 | 2 | 1 | 1 | 1 | 50% |
 | [Other](#other) | 2 | 3 | 1 | 2 | 2 | 33% |
-| **Total** | **56** | **151** | **144** | **7** | **7** | **95%** |
+| **Total** | **56** | **151** | **148** | **3** | **3** | **98%** |
 
 ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can be completed first. These two rows are not included in the opcode counts above.
 
 <!-- results:start -->
 
-**Last results:** 144 passed, 9 failed, 0 not run (of 153 tests).
+**Last results:** 148 passed, 5 failed, 0 not run (of 153 tests).
 
 **Decimal mode:** 0 of 2 done (0%).
 
@@ -74,10 +74,6 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | [bit_abs](test/asm_tests/bit_abs.asm) | [bit_abs] RAM mismatch at 0x1fc: Expected 0xb5, got 0xf5 |
 | [bit_zp](test/asm_tests/bit_zp.asm) | [bit_zp] RAM mismatch at 0x1fc: Expected 0xb5, got 0xf5 |
 | [brk](test/asm_tests/brk.asm) | [brk] RAM mismatch at 0x1ec: Expected 0x34, got 0x0 |
-| [jmp_ind](test/asm_tests/jmp_ind.asm) | [jmp_ind] RAM mismatch at 0x1fe: Expected 0x75, got 0x0 |
-| [jsr](test/asm_tests/jsr.asm) | [jsr] RAM mismatch at 0x100: Expected 0xc0, got 0x0 |
-| [rti](test/asm_tests/rti.asm) | [rti] RAM mismatch at 0x100: Expected 0xf3, got 0xc0 |
-| [rts](test/asm_tests/rts.asm) | [rts] RAM mismatch at 0x100: Expected 0x77, got 0xc5 |
 | [sbc_imm_dec](test/asm_tests/sbc_imm_dec.asm) | [sbc_imm_dec] RAM mismatch at 0x301: Expected 0x9, got 0xf |
 
 <!-- results:end -->
@@ -87,12 +83,12 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | Abbrev. | Mode | Syntax | Opcodes | Done | % Complete |
 |---------|------|--------|--------:|-----:|-----------:|
 | `A` | accumulator | `OPC A` | 4 | 4 | 100% |
-| `abs` | absolute | `OPC oper` | 23 | 21 | 91% |
+| `abs` | absolute | `OPC oper` | 23 | 22 | 95% |
 | `abs,X` | absolute,X | `OPC oper,X` | 15 | 15 | 100% |
 | `abs,Y` | absolute,Y | `OPC oper,Y` | 9 | 9 | 100% |
 | `#` | immediate | `OPC #oper` | 11 | 11 | 100% |
-| `impl` | implied | `OPC` | 25 | 22 | 88% |
-| `ind` | indirect | `OPC (oper)` | 1 | 0 | 0% |
+| `impl` | implied | `OPC` | 25 | 24 | 96% |
+| `ind` | indirect | `OPC (oper)` | 1 | 1 | 100% |
 | `X,ind` | (indirect,X) | `OPC (oper,X)` | 8 | 8 | 100% |
 | `ind,Y` | (indirect),Y | `OPC (oper),Y` | 8 | 8 | 100% |
 | `rel` | relative | `OPC oper` | 8 | 8 | 100% |
@@ -723,38 +719,38 @@ Flags affected: `-`
 
 Flags affected: `-`
 
-**Progress:** 1 of 2 done (50%)
+**Progress:** 2 of 2 done (100%)
 
 > Indirect: NMOS page-wrap bug: `JMP ($xxFF)` fetches the high byte from `$xx00`.
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
 | [x] | $4C | absolute | `JMP oper` | 3 | 3 | 8 | [jmp_abs.asm](test/asm_tests/jmp_abs.asm) / [jmp_abs.json](test/asm_tests/jmp_abs.json) |
-| [!] | $6C | indirect | `JMP (oper)` | 3 | 5*** | | [jmp_ind.asm](test/asm_tests/jmp_ind.asm) / [jmp_ind.json](test/asm_tests/jmp_ind.json) |
+| [x] | $6C | indirect | `JMP (oper)` | 3 | 5*** | 13 | [jmp_ind.asm](test/asm_tests/jmp_ind.asm) / [jmp_ind.json](test/asm_tests/jmp_ind.json) |
 
 #### JSR: Jump to New Location Saving Return Address
 
 Flags affected: `-`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 > Pushes PC+2 (address of last byte of JSR).
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $20 | absolute | `JSR oper` | 3 | 6 | | [jsr.asm](test/asm_tests/jsr.asm) / [jsr.json](test/asm_tests/jsr.json) |
+| [x] | $20 | absolute | `JSR oper` | 3 | 6 | 16 | [jsr.asm](test/asm_tests/jsr.asm) / [jsr.json](test/asm_tests/jsr.json) |
 
 #### RTS: Return from Subroutine
 
 Flags affected: `-`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 > Pulls PC, then adds 1.
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $60 | implied | `RTS` | 1 | 6 | | [rts.asm](test/asm_tests/rts.asm) / [rts.json](test/asm_tests/rts.json) |
+| [x] | $60 | implied | `RTS` | 1 | 6 | 12 | [rts.asm](test/asm_tests/rts.asm) / [rts.json](test/asm_tests/rts.json) |
 
 ### Interrupts
 
@@ -774,13 +770,13 @@ Flags affected: `I=1`
 
 Flags affected: `from stack`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 > Pulls status then PC (no +1).
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $40 | implied | `RTI` | 1 | 6 | | [rti.asm](test/asm_tests/rti.asm) / [rti.json](test/asm_tests/rti.json) |
+| [x] | $40 | implied | `RTI` | 1 | 6 | 15 | [rti.asm](test/asm_tests/rti.asm) / [rti.json](test/asm_tests/rti.json) |
 
 ### Other
 

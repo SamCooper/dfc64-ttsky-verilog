@@ -37,7 +37,7 @@
 
     localparam PC_OP_NOP = 2'b00;
     localparam PC_OP_INC = 2'b01;
-    localparam PC_OP_JMP = 2'b10;
+    localparam PC_OP_DEC = 2'b10;
     localparam PC_OP_BRN = 2'b11;
 
     localparam ALU_OP_ADD = 4'b0000;
