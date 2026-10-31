@@ -30,6 +30,11 @@ MEM_WE_N = 3
 MEM_OE_N = 4
 ZP_CLR_N = 5
 
+# ui_in pins (active LOW; idle high so no interrupt is requested)
+IRQ_N = 0
+NMI_N = 1
+UI_IDLE = (1 << IRQ_N) | (1 << NMI_N)
+
 RESET_VECTOR = 0xFFFC
 
 
@@ -38,7 +43,7 @@ async def _boot(dut):
     cocotb.start_soon(clock.start())
 
     dut.ena.value = 1
-    dut.ui_in.value = 0
+    dut.ui_in.value = UI_IDLE
     dut.uio_in.value = 0
     dut.rst_n.value = 0
     await ClockCycles(dut.clk, 10)

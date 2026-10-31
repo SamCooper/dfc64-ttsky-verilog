@@ -7,11 +7,16 @@ Usage: python3 test/tools/sim6502.py [--write-json] [--stamp] test/*.asm
   Prints, per test, how many injected faults it detects (exit code 1 if any are missed).
   --write-json  rewrite each .json from the model
   --stamp       add/update the '; Cycles:' and '; Done:' header lines
+
+Interrupt markers: a comment on an instruction line may contain '@irq' (IRQ_n low),
+'@irq_off' (IRQ_n high), '@nmi' (pulse NMI_n), '@nmi_low' or '@nmi_high', each with an
+optional '+N' (a delay in DUT clocks, used by the cocotb harness only). The model applies
+a marker when the instruction is first fetched and polls for interrupts after it executes.
 """
 import re, sys, os, json
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPORT = os.path.join(HERE, "..", "..", "6502_test_completeness.md")
+REPORT = os.path.join(HERE, "..", "..", "..", "6502_test_completeness.md")
 RAM_END = 0x8000
 
 MODE_KEY = {"accumulator": "A", "absolute": "abs", "absolute,X": "absX", "absolute,Y": "absY",
@@ -152,6 +157,24 @@ def assemble(path_or_text, is_text=False):
     return mem, where
 
 
+MARKER = re.compile(r"@(irq_off|irq|nmi_low|nmi_high|nmi)\b(?:\s*\+(\d+))?")
+
+
+def parse_markers(path_or_text, is_text=False):
+    """Interrupt markers -> {address: [(action, delay clocks), ...]}, in source order."""
+    lines = (path_or_text if is_text else open(path_or_text).read()).splitlines()
+    _, where = assemble("\n".join(lines), is_text=True)
+    markers = {}
+    for idx, raw in enumerate(lines):
+        found = MARKER.findall(raw.split(";", 1)[1]) if ";" in raw else []
+        if not found:
+            continue
+        if idx not in where:
+            raise SystemExit(f"line {idx + 1}: interrupt marker on a line with no instruction: {raw}")
+        markers.setdefault(where[idx], []).extend((a, int(d or 0)) for a, d in found)
+    return markers
+
+
 # ---------------------------------------------------------------- CPU model
 
 C, Z, I, D, B, U, V, N = 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
@@ -168,11 +191,12 @@ AFFECTS = {  # flags each mnemonic may change (others must be preserved)
 FAULTS = ["no_zp_wrap", "no_carry", "drop_high", "no_nz", "flags_leak", "no_write",
           "no_carry_in", "no_decimal", "no_v", "cmp_c_inverted", "bit_no_v",
           "branch_inverted", "branch_no_page", "jmp_ind_fixed", "jsr_ret_pc", "rts_no_inc",
-          "rti_inc", "brk_pc1", "brk_no_b", "brk_clear_d", "php_no_b", "no_stack_wrap"]
+          "rti_inc", "brk_pc1", "brk_no_b", "brk_clear_d", "php_no_b", "no_stack_wrap",
+          "int_b_set", "int_no_i", "irq_ignores_i", "nmi_level"]
 
 
 class CPU:
-    def __init__(self, image, faults=(), target=()):
+    def __init__(self, image, faults=(), target=(), markers=None):
         self.m = bytearray(0x10000)
         for a, v in image.items():
             if a < RAM_END:
@@ -187,10 +211,17 @@ class CPU:
         self.triggered = set()
         self.tgt = False
         self.cur = 0
+        self.markers = dict(markers or {})   # address -> actions, removed once applied
+        self.irq = self.nmi = False          # IRQ_n / NMI_n asserted (low)
+        self.nmi_pending = False             # NMI_n edge not yet serviced
 
     # fault helper: active only while executing a target opcode
     def f(self, name):
         return self.tgt and name in self.faults
+
+    # interrupt fault helper: active in tests whose '; Test:' line names IRQ or NMI
+    def fi(self, name):
+        return "INT" in self.target and name in self.faults
 
     def hit(self, name, changed=True):
         if changed:
@@ -357,8 +388,52 @@ class CPU:
         self.nz(r)
         return r
 
+    def signal(self, action):
+        if action == "irq": self.irq = True
+        elif action == "irq_off": self.irq = False
+        elif action == "nmi_high": self.nmi = False
+        else:  # 'nmi' pulses NMI_n, 'nmi_low' holds it; either way a high->low edge
+            if not self.nmi:
+                self.nmi_pending = True
+            self.nmi = action == "nmi_low"
+
+    def poll(self, mn, p_before):
+        """Take a pending NMI, or an IRQ that I allows, after an instruction.
+        As on the NMOS 6502, CLI/SEI/PLP change I too late for this poll; RTI does not."""
+        self.tgt = False
+        if self.nmi and self.fi("nmi_level"):
+            self.hit("nmi_level", not self.nmi_pending); self.nmi_pending = True
+        if self.nmi_pending:
+            self.nmi_pending = False
+            self.interrupt(0xFFFA)
+            return True
+        masked = (p_before if mn in ("CLI", "SEI", "PLP") else self.p) & I
+        if self.irq and masked and self.fi("irq_ignores_i"):
+            self.hit("irq_ignores_i"); masked = 0
+        if self.irq and not masked:
+            self.interrupt(0xFFFE)
+            return True
+        return False
+
+    def interrupt(self, vector):
+        self.cur = self.pc
+        self.push(self.pc >> 8); self.push(self.pc & 0xFF)
+        pv = (self.p | U) & ~B
+        if self.fi("int_b_set"):
+            self.hit("int_b_set"); pv |= B
+        self.push(pv)
+        if self.fi("int_no_i"):
+            self.hit("int_no_i", not self.p & I)
+        else:
+            self.p |= I
+        self.pc = self.rd(vector) | self.rd(vector + 1) << 8
+        self.cycles += 7
+
     def step(self):
         pc0 = self.cur = self.pc
+        for action, _ in self.markers.pop(pc0, ()):
+            self.signal(action)
+        halt = False
         op = self.fetch()
         if op not in TABLE:
             raise RuntimeError(f"illegal opcode ${op:02X} at ${pc0:04X}")
@@ -451,8 +526,7 @@ class CPU:
                     self.hit("jmp_ind_fixed", hi_addr != ptr + 1); hi_addr = ptr + 1
                 t = self.rd(ptr) | self.rd(hi_addr) << 8
             self.pc = t
-            if t == pc0:
-                return False
+            halt = t == pc0
         elif mn == "JSR":
             lo = self.fetch()
             ret = self.pc          # address of the JSR's last byte
@@ -492,7 +566,8 @@ class CPU:
             keep = ~AFFECTS.get(mn, 0) & (N | V | Z | C)
             if keep:
                 self.hit("flags_leak"); self.p ^= keep
-        return True
+        # a JMP to itself ends the program, unless an interrupt leaves it
+        return self.poll(mn, p_before) or not halt
 
     def run(self, limit=200000):
         for _ in range(limit):
@@ -501,10 +576,10 @@ class CPU:
         raise RuntimeError("did not terminate")
 
 
-def run_info(image):
+def run_info(image, markers=None):
     """(6502 cycles from the first instruction to the first fetch of the done loop, done address).
-    The 7-cycle reset sequence is not included."""
-    c = CPU(image).run()
+    The 7-cycle reset sequence is not included; interrupt sequences (7 cycles each) are."""
+    c = CPU(image, markers=markers).run()
     return c.cycles - 3, c.pc   # run() stops after executing the JMP-to-self once (3 cycles)
 
 
@@ -512,7 +587,8 @@ def stamp(path):
     """Write '; Cycles: n' and '; Done: $xxxx' after the '; Test:' header line(s)."""
     lines = open(path).read().split("\n")
     lines = [l for l in lines if not l.startswith(("; Cycles:", "; Done:"))]
-    cycles, done = run_info(assemble("\n".join(lines), is_text=True)[0])
+    text = "\n".join(lines)
+    cycles, done = run_info(assemble(text, is_text=True)[0], parse_markers(text, is_text=True))
     at = max(i for i, l in enumerate(lines) if l.startswith("; Test:")) + 1
     lines[at:at] = [f"; Cycles: {cycles}", f"; Done: ${done:04X}"]
     with open(path, "w") as fh:
@@ -534,13 +610,15 @@ def target_ops(path):
     for line in open(path):
         if line.startswith("; Test:"):
             ops |= {int(h, 16) for h in re.findall(r"\(\$([0-9A-F]{2})\)", line)}
+            if re.search(r"\b(IRQ|NMI)\b", line):
+                ops.add("INT")
     return ops
 
 
-def fault_matrix(image, target, good):
+def fault_matrix(image, target, good, markers=None):
     res = {}
     for fl in FAULTS:
-        c = CPU(image, [fl], target)
+        c = CPU(image, [fl], target, markers)
         try:
             c.run()
             detected = ram(c) != good
@@ -558,14 +636,15 @@ if __name__ == "__main__":
     bad = 0
     for path in files:
         img, _ = assemble(path)
-        cpu = CPU(img).run()
+        markers = parse_markers(path)
+        cpu = CPU(img, markers=markers).run()
         good = ram(cpu)
         if stamping:
             stamp(path)
         if write:
             with open(os.path.splitext(path)[0] + ".json", "w") as fh:
                 fh.write(json.dumps(ram_json(cpu), indent=4) + "\n")
-        fm = fault_matrix(img, target_ops(path), good)
+        fm = fault_matrix(img, target_ops(path), good, markers)
         missed = [k for k, v in fm.items() if not v]
         bad += bool(missed)
         print(f"{os.path.basename(path):<16} faults caught {sum(fm.values())}/{len(fm)}"

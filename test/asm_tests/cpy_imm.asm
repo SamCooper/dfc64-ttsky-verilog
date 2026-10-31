@@ -1,7 +1,7 @@
 ; Target: vasm6502_oldstyle
 ; Test: CPY #immediate ($C0)
-; Cycles: 102
-; Done: $C049
+; Cycles: 148
+; Done: $C066
 ; Checks N/Z/C after the compare, and that the register and V are unchanged
 ; (the register is stored after each compare).
 ;
@@ -24,6 +24,8 @@ reset:
         sta $0304
         lda #$FF        ; Pre-seed a zero-result location
         sta $0306
+        lda #$FF        ; Pre-seed a zero-result location
+        sta $0308
 
         ; --- Case 1: equal (Z=1, C=1) ---
         ldy #$5A
@@ -66,6 +68,24 @@ reset:
         cpy #$00
         sty $0306       ; Expect $00
         php             ; Expect $77 at $01F9
+
+        ; --- Case 8: C=0 before: carry-in ignored (Z=1, C=1) ---
+        lda #$44        ; V=1 I=1 N=0 D=0 Z=0 C=0
+        pha
+        plp
+        ldy #$10
+        cpy #$10
+        sty $0307       ; Expect $10
+        php             ; Expect $77 at $01F8
+
+        ; --- Case 9: D=1: still binary, $00-$60=$A0 (N=1, C=0) ---
+        lda #$4C        ; V=1 D=1 I=1 N=0 Z=0 C=0
+        pha
+        plp
+        ldy #$00
+        cpy #$60
+        sty $0308       ; Expect $00
+        php             ; Expect $FC at $01F7
 
 done:
         jmp done        ; Infinite loop to terminate

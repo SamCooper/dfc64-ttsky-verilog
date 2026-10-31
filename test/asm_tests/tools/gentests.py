@@ -488,7 +488,9 @@ for mn, imm, mod in (("ADC", ADC_IMM, ADC_MODE), ("SBC", SBC_IMM, SBC_MODE)):
 CMP_IMM = [dict(a=0x5A, m=0x5A, desc="equal (Z=1, C=1)"), dict(a=0x5A, m=0xA5, desc="register < operand (C=0)"),
            dict(a=0x80, m=0x01, desc="register > operand (C=1)"), dict(a=0x01, m=0x02, desc="register < operand, result $FF (N=1)"),
            dict(a=0x00, m=0x80, desc="$00 vs $80: unsigned, C=0, N=1"), dict(a=0xFF, m=0x00, desc="$FF vs $00: C=1, N=1"),
-           dict(a=0x00, m=0x00, desc="zero vs zero (Z=1, C=1)")]
+           dict(a=0x00, m=0x00, desc="zero vs zero (Z=1, C=1)"),
+           dict(p=0x44, a=0x10, m=0x10, desc="C=0 before: carry-in ignored (Z=1, C=1)"),
+           dict(p=0x4C, a=0x00, m=0x60, desc="D=1: still binary, $00-$60=$A0 (N=1, C=0)")]
 CMP_MODE = [dict(a=0x5A, m=0x5A), dict(a=0x5A, m=0xA5), dict(a=0x80, m=0x01), dict(a=0x01, m=0x02), dict(a=0x3C, m=0x1C)]
 CMP_ABOUT = ["Checks N/Z/C after the compare, and that the register and V are unchanged",
              "(the register is stored after each compare)."]
