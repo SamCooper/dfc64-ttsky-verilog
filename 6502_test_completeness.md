@@ -22,7 +22,7 @@ This report tracks which 6502 opcodes pass on DFC64. The marks, counts and perce
 | Column | Meaning |
 |--------|---------|
 | Done | Status mark (see below) |
-| Opcode | Hex opcode. `(D=1)` marks the separate decimal-mode entry for ADC and SBC |
+| Opcode | Hex opcode |
 | Mode / Syntax | Addressing mode and assembler syntax |
 | Bytes | Instruction length |
 | 6502 Cycles | NMOS 6502 cycle count (see the cycle notes below) |
@@ -38,7 +38,7 @@ This report tracks which 6502 opcodes pass on DFC64. The marks, counts and perce
 
 **Cycle notes:** `*` add 1 cycle if a page boundary is crossed. `**` add 1 cycle if the branch is taken, add 1 more if it lands on a different page. `***` NMOS: the indirect address high byte is always fetched from the same page as the low byte (`JMP ($11FF)` reads `$11FF` and `$1100`).
 
-The decimal-mode entries for ADC and SBC are not counted in the Summary or Addressing Modes tables. They are included in the ADC and SBC progress lines.
+**Decimal (BCD) mode is not supported.** ADC and SBC ignore the D flag and always work in binary. SED, CLD, PHP, PLP, BRK and RTI still set, clear, save and restore D, but it has no effect on arithmetic. There are no decimal-mode tests.
 
 The [Opcode Matrix](#opcode-matrix) is a 16×16 grid that cross-checks where each opcode sits. [How the Tests Work](#how-the-tests-work), at the end, describes the test files, the harness and the tools.
 
@@ -56,25 +56,18 @@ The [Opcode Matrix](#opcode-matrix) is a 16×16 grid that cross-checks where eac
 | [Comparisons](#comparisons) | 3 | 14 | 14 | 0 | 0 | 100% |
 | [Conditional Branch Instructions](#conditional-branch-instructions) | 8 | 8 | 8 | 0 | 0 | 100% |
 | [Jumps & Subroutines](#jumps--subroutines) | 3 | 4 | 4 | 0 | 0 | 100% |
-| [Interrupts](#interrupts) | 2 | 2 | 1 | 1 | 1 | 50% |
+| [Interrupts](#interrupts) | 2 | 2 | 2 | 0 | 0 | 100% |
 | [Other](#other) | 2 | 3 | 1 | 2 | 2 | 33% |
-| **Total** | **56** | **151** | **148** | **3** | **3** | **98%** |
-
-ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can be completed first. These two rows are not included in the opcode counts above.
+| **Total** | **56** | **151** | **149** | **2** | **2** | **98%** |
 
 <!-- results:start -->
 
-**Last results:** 148 passed, 5 failed, 0 not run (of 153 tests).
-
-**Decimal mode:** 0 of 2 done (0%).
+**Last results:** 149 passed, 2 failed, 0 not run (of 151 tests).
 
 | Failing test | Reason |
 |--------------|--------|
-| [adc_imm_dec](test/asm_tests/adc_imm_dec.asm) | [adc_imm_dec] RAM mismatch at 0x1fa: Expected 0xbd, got 0xbc |
 | [bit_abs](test/asm_tests/bit_abs.asm) | [bit_abs] RAM mismatch at 0x1fc: Expected 0xb5, got 0xf5 |
 | [bit_zp](test/asm_tests/bit_zp.asm) | [bit_zp] RAM mismatch at 0x1fc: Expected 0xb5, got 0xf5 |
-| [brk](test/asm_tests/brk.asm) | [brk] did not reach Done ($C01D) within 1648 clocks (expected 90 6502 cycles; Done read 0 time(s)); last reads: $FFFF $FFFF $FFFE $FFFE $FFFE $FFFE $FFFF $FF... |
-| [sbc_imm_dec](test/asm_tests/sbc_imm_dec.asm) | [sbc_imm_dec] RAM mismatch at 0x301: Expected 0x9, got 0xf |
 
 <!-- results:end -->
 
@@ -87,7 +80,7 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | `abs,X` | absolute,X | `OPC oper,X` | 15 | 15 | 100% |
 | `abs,Y` | absolute,Y | `OPC oper,Y` | 9 | 9 | 100% |
 | `#` | immediate | `OPC #oper` | 11 | 11 | 100% |
-| `impl` | implied | `OPC` | 25 | 24 | 96% |
+| `impl` | implied | `OPC` | 25 | 25 | 100% |
 | `ind` | indirect | `OPC (oper)` | 1 | 1 | 100% |
 | `X,ind` | (indirect,X) | `OPC (oper,X)` | 8 | 8 | 100% |
 | `ind,Y` | (indirect),Y | `OPC (oper),Y` | 8 | 8 | 100% |
@@ -369,14 +362,13 @@ Flags affected: `N Z`
 
 Flags affected: `N Z C V`
 
-**Progress:** 8 of 9 done (88%)
+**Progress:** 8 of 8 done (100%)
 
-> Test both binary and decimal (D=1) mode.
+> Binary mode only. Decimal (BCD) mode is not supported, so it is not tested.
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
 | [x] | $69 | immediate | `ADC #oper` | 2 | 2 | 6 | [adc_imm.asm](test/asm_tests/adc_imm.asm) / [adc_imm.json](test/asm_tests/adc_imm.json) |
-| [!] | $69 (D=1) | immediate, decimal mode | `ADC #oper` | 2 | 2 | 6 | [adc_imm_dec.asm](test/asm_tests/adc_imm_dec.asm) / [adc_imm_dec.json](test/asm_tests/adc_imm_dec.json) |
 | [x] | $65 | zeropage | `ADC oper` | 2 | 3 | 7 | [adc_zp.asm](test/asm_tests/adc_zp.asm) / [adc_zp.json](test/asm_tests/adc_zp.json) |
 | [x] | $75 | zeropage,X | `ADC oper,X` | 2 | 4 | 7 | [adc_zp_x.asm](test/asm_tests/adc_zp_x.asm) / [adc_zp_x.json](test/asm_tests/adc_zp_x.json) |
 | [x] | $6D | absolute | `ADC oper` | 3 | 4 | 10 | [adc_abs.asm](test/asm_tests/adc_abs.asm) / [adc_abs.json](test/asm_tests/adc_abs.json) |
@@ -389,14 +381,13 @@ Flags affected: `N Z C V`
 
 Flags affected: `N Z C V`
 
-**Progress:** 8 of 9 done (88%)
+**Progress:** 8 of 8 done (100%)
 
-> Test both binary and decimal (D=1) mode.
+> Binary mode only. Decimal (BCD) mode is not supported, so it is not tested.
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
 | [x] | $E9 | immediate | `SBC #oper` | 2 | 2 | 6 | [sbc_imm.asm](test/asm_tests/sbc_imm.asm) / [sbc_imm.json](test/asm_tests/sbc_imm.json) |
-| [!] | $E9 (D=1) | immediate, decimal mode | `SBC #oper` | 2 | 2 | 6 | [sbc_imm_dec.asm](test/asm_tests/sbc_imm_dec.asm) / [sbc_imm_dec.json](test/asm_tests/sbc_imm_dec.json) |
 | [x] | $E5 | zeropage | `SBC oper` | 2 | 3 | 7 | [sbc_zp.asm](test/asm_tests/sbc_zp.asm) / [sbc_zp.json](test/asm_tests/sbc_zp.json) |
 | [x] | $F5 | zeropage,X | `SBC oper,X` | 2 | 4 | 7 | [sbc_zp_x.asm](test/asm_tests/sbc_zp_x.asm) / [sbc_zp_x.json](test/asm_tests/sbc_zp_x.json) |
 | [x] | $ED | absolute | `SBC oper` | 3 | 4 | 10 | [sbc_abs.asm](test/asm_tests/sbc_abs.asm) / [sbc_abs.json](test/asm_tests/sbc_abs.json) |
@@ -758,13 +749,13 @@ Flags affected: `-`
 
 Flags affected: `I=1`
 
-**Progress:** 0 of 1 done (0%)
+**Progress:** 1 of 1 done (100%)
 
 > Pushes PC+2 and status with B set; jumps via the IRQ vector at $FFFE/$FFFF.
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $00 | implied | `BRK` | 1 | 7 | 18 | [brk.asm](test/asm_tests/brk.asm) / [brk.json](test/asm_tests/brk.json) |
+| [x] | $00 | implied | `BRK` | 1 | 7 | 21 | [brk.asm](test/asm_tests/brk.asm) / [brk.json](test/asm_tests/brk.json) |
 
 #### RTI: Return from Interrupt
 
@@ -776,7 +767,7 @@ Flags affected: `from stack`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $40 | implied | `RTI` | 1 | 6 | 15 | [rti.asm](test/asm_tests/rti.asm) / [rti.json](test/asm_tests/rti.json) |
+| [x] | $40 | implied | `RTI` | 1 | 6 | 14 | [rti.asm](test/asm_tests/rti.asm) / [rti.json](test/asm_tests/rti.json) |
 
 ### Other
 
@@ -833,7 +824,7 @@ Each test is a pair of files in [test/](test/asm_tests/), with the same name (fo
 
 The harness ([test_asm.py](test_asm.py)) assembles the `.asm` with `vasm6502_oldstyle -Fbin -dotdir` and loads the binary at `$C000`. It releases reset, runs the program until it reaches its end loop, and then compares memory with the `.json`.
 
-File names are `<mnemonic>_<mode>`, using the mode suffixes `imm`, `zp`, `zp_x`, `zp_y`, `abs`, `abs_x`, `abs_y`, `ind_x`, `ind_y`, `ind` and `acc`. Instructions with only one mode use the plain mnemonic (`tax`, `bcc`, `brk`). Decimal-mode tests add `_dec` (`adc_imm_dec`).
+File names are `<mnemonic>_<mode>`, using the mode suffixes `imm`, `zp`, `zp_x`, `zp_y`, `abs`, `abs_x`, `abs_y`, `ind_x`, `ind_y`, `ind` and `acc`. Instructions with only one mode use the plain mnemonic (`tax`, `bcc`, `brk`).
 
 ### Header fields
 
@@ -866,7 +857,6 @@ After every test, the harness merges the outcome into `asm_results.json` (next t
 - **Summary:** recounts Done, Failing, Remaining and % Complete for each category and the total.
 - **Addressing Modes:** recounts Done and % Complete for each mode.
 - **Instructions:** rewrites the **Progress** line under each instruction heading.
-- **Decimal mode:** the decimal-mode rows count only towards the ADC/SBC progress lines and the "Decimal mode" line, not the Summary or Addressing Modes.
 - **Rounding:** percentages are rounded down, so 100% means every entry is done.
 - **Results block:** rewrites the block under the Summary (between the `<!-- results:start/end -->` markers) with the latest totals and a table of failing tests with their reasons.
 
@@ -902,7 +892,7 @@ The expected results follow the **NMOS 6502**. A CPU that behaves like the CMOS 
 
 - **JMP indirect:** `JMP ($xxFF)` takes its high byte from `$xx00`.
 - **BRK:** doesn't clear D. It pushes PC+2 and the status with B set, and sets I.
-- **Decimal mode flags:** ADC sets N and V from the intermediate result and Z from the binary sum. SBC sets N, V and Z from the binary difference. Decimal mode is tested only in `adc_imm_dec` and `sbc_imm_dec`, so binary mode can pass first.
+- **Decimal mode:** not supported. ADC and SBC ignore D and always use binary arithmetic (carry, N, Z and V as for binary).
 - **PHP/BRK:** the pushed status always has B (bit 4) and bit 5 set. PLP and RTI ignore those bits when pulling.
 
 ### Regenerating tests

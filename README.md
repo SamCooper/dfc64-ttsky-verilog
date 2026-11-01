@@ -13,6 +13,8 @@ The CPU uses the IO pins of the Tiny Tapeout footprint as follows:
 * 8 bidirectional pins
   * This forms the data bus of the CPU and is used for all inputs and outs including both hi and low bytes of addresses as well as any data words in and out
 
+**Not supported:** decimal (BCD) mode. `SED` and `CLD` set and clear the D flag, and the flag is saved and restored by `PHP`/`PLP`/`BRK`/`RTI`, but `ADC` and `SBC` ignore it and always do binary arithmetic. There are no decimal-mode tests.
+
 **Core Toolchain and Design Decisions**
 *   **Design Entry (H. Neemann's Digital):** To balance visual schematic capture with hierarchical organization, the core logic and Finite State Machines (FSM) will be designed manually in *Digital*. This allows for drag-and-drop logic gate placement while automatically exporting standard, synthesizable Verilog for the ASIC toolchain.
 *   **Test-Driven Development (Claude Code):** Development will follow a strict BDD (Behavior-Driven Development) methodology. Claude Code will act as an automated test engineer, generating Python-based hardware mocks and test vectors based on plain-language specifications before the hardware is drawn.

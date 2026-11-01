@@ -23,3 +23,5 @@ test/test_suite.testdef
 testrun.txt
 test/asm_results.json
 test/asm_tests/quick/
+test/asm_tests/tools/__pycache__/
+test/irq_results.json

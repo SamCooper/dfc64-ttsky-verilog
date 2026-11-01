@@ -189,8 +189,8 @@ AFFECTS = {  # flags each mnemonic may change (others must be preserved)
 }
 
 FAULTS = ["no_zp_wrap", "no_carry", "drop_high", "no_nz", "flags_leak", "no_write",
-          "no_carry_in", "no_decimal", "no_v", "cmp_c_inverted", "bit_no_v",
-          "branch_inverted", "branch_no_page", "jmp_ind_fixed", "jsr_ret_pc", "rts_no_inc",
+          "no_carry_in", "no_v", "cmp_c_inverted", "bit_no_v",
+          "branch_inverted", "branch_no_page", "jmp_ind_nmos_bug", "jsr_ret_pc", "rts_no_inc",
           "rti_inc", "brk_pc1", "brk_no_b", "brk_clear_d", "php_no_b", "no_stack_wrap",
           "int_b_set", "int_no_i", "irq_ignores_i", "nmi_level"]
 
@@ -305,59 +305,27 @@ class CPU:
         return self.rd(self.sp_addr(self.sp))
 
     def adc(self, m):
+        # Binary only: decimal (BCD) mode is not supported, so the D flag is ignored
         cin = self.p & C
         if self.f("no_carry_in"):
             self.hit("no_carry_in", cin != 0); cin = 0
         a = self.a
-        dec = self.p & D
-        if self.f("no_decimal"):
-            self.hit("no_decimal", dec != 0); dec = 0
-        if not dec:
-            r = a + m + cin
-            v = (~(a ^ m) & (a ^ r)) & 0x80
-            self.setf(C, r > 0xFF); r &= 0xFF
-        else:  # NMOS decimal (Bruce Clark, "Decimal Mode", appendix A)
-            binr = (a + m + cin) & 0xFF
-            al = (a & 0x0F) + (m & 0x0F) + cin
-            if al >= 0x0A:
-                al = ((al + 0x06) & 0x0F) + 0x10
-            r = (a & 0xF0) + (m & 0xF0) + al
-            v = (~(a ^ m) & (a ^ r)) & 0x80
-            n_from = r
-            if r >= 0xA0:
-                r += 0x60
-            self.setf(C, r >= 0x100); r &= 0xFF
-            self.a = r
-            self.setv(v)
-            if self.f("no_nz"):
-                self.hit("no_nz")
-            else:
-                self.setf(N, n_from & 0x80); self.setf(Z, binr == 0)
-            return
+        r = a + m + cin
+        v = (~(a ^ m) & (a ^ r)) & 0x80
+        self.setf(C, r > 0xFF); r &= 0xFF
         self.a = r
         self.setv(v)
         self.nz(r)
 
     def sbc(self, m):
+        # Binary only: decimal (BCD) mode is not supported, so the D flag is ignored
         cin = self.p & C
         if self.f("no_carry_in"):
             self.hit("no_carry_in", cin == 0); cin = 1
         a = self.a
         binr = a - m - (1 - cin)
         v = ((a ^ m) & (a ^ binr)) & 0x80
-        dec = self.p & D
-        if self.f("no_decimal"):
-            self.hit("no_decimal", dec != 0); dec = 0
-        if dec:  # NMOS decimal: flags from the binary result
-            al = (a & 0x0F) - (m & 0x0F) + cin - 1
-            if al < 0:
-                al = ((al - 0x06) & 0x0F) - 0x10
-            r = (a & 0xF0) - (m & 0xF0) + al
-            if r < 0:
-                r -= 0x60
-            self.a = r & 0xFF
-        else:
-            self.a = binr & 0xFF
+        self.a = binr & 0xFF
         self.setf(C, binr >= 0)
         self.setv(v)
         self.nz(binr & 0xFF)
@@ -521,9 +489,10 @@ class CPU:
             t = self.fetch() | self.fetch() << 8
             if mode == "ind":
                 ptr = t
-                hi_addr = (ptr & 0xFF00) | ((ptr + 1) & 0xFF)
-                if self.f("jmp_ind_fixed"):
-                    self.hit("jmp_ind_fixed", hi_addr != ptr + 1); hi_addr = ptr + 1
+                hi_addr = ptr + 1   # page crossing is carried (the NMOS wrap bug is not implemented)
+                if self.f("jmp_ind_nmos_bug"):
+                    wrapped = (ptr & 0xFF00) | ((ptr + 1) & 0xFF)
+                    self.hit("jmp_ind_nmos_bug", wrapped != ptr + 1); hi_addr = wrapped
                 t = self.rd(ptr) | self.rd(hi_addr) << 8
             self.pc = t
             halt = t == pc0

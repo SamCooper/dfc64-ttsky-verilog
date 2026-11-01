@@ -19,6 +19,12 @@ from test_bus import _boot, _wire_bus
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
+
+def _vasm():
+    """The assembler: $VASM, else the copy in tools/vasm/, else vasm6502_oldstyle on PATH."""
+    bundled = os.path.join(_HERE, "..", "tools", "vasm", "vasm6502_oldstyle")
+    return os.environ.get("VASM") or (bundled if os.access(bundled, os.X_OK) else "vasm6502_oldstyle")
+
 # DFC64 clocks per 6502 cycle used for the timeout budget. Not known yet, so this is
 # deliberately generous; override with the environment variable once measured.
 CLOCKS_PER_CYCLE = int(os.environ.get("ASM_CLOCKS_PER_CYCLE", "8"))
@@ -93,7 +99,7 @@ async def run_asm_test(dut, asm_file, info, stimulus=None):
         bin_file = os.path.join(temp_dir, f"{base_name}.bin")
 
         compile_cmd = [
-            "vasm6502_oldstyle",
+            _vasm(),
             "-Fbin", "-dotdir",
             "-o", bin_file, asm_file
         ]

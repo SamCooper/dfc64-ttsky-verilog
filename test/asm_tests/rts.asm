@@ -1,7 +1,7 @@
 ; Target: vasm6502_oldstyle
 ; Test: RTS implied ($60)
-; Cycles: 124
-; Done: $C03C
+; Cycles: 152
+; Done: $C046
 ; Pulls an address and continues at address + 1. Return addresses are pushed by
 ; hand (PHA) so JSR is not needed. Each target stores a marker and records SP.
 ; Initial status (via PLP): V=1 I=1 C=1 N=0 D=0 Z=0
@@ -27,14 +27,20 @@ reset:
         rts
         lda #$EE
         sta $0300
+        jmp c2
 r1:
         tsx
         stx $0310       ; Expect $FF (SP after the RTS)
-        php             ; Expect $F5 at $01FF (Flags unchanged by RTS)
+        php
+        pla
+        sta $0320       ; Expect $F5 (Flags unchanged by RTS)
         lda #$01
         sta $0300       ; Expect $01
 
-        ; --- Case 2: pulled address $C4FF; +1 must carry into the high byte -> $C500 ---
+c2:
+        ; --- Case 2: SP = $FE, pulled address $C4FF; +1 must carry into the high byte -> $C500 ---
+        ldx #$FE
+        txs
         lda #>(r2-1)
         pha
         lda #<(r2-1)
@@ -66,7 +72,9 @@ r2_bad:
 r2:
         tsx
         stx $0311       ; Expect $FE (SP after the RTS)
-        php             ; Expect $F5 at $01FE (Flags unchanged by RTS)
+        php
+        pla
+        sta $0321       ; Expect $F5 (Flags unchanged by RTS)
         lda #$02
         sta $0301       ; Expect $02
         jmp c3
@@ -75,7 +83,9 @@ r2:
 r3:
         tsx
         stx $0312       ; Expect $00 (SP after the RTS)
-        php             ; Expect $77 at $0100 (Flags unchanged by RTS)
+        php
+        pla
+        sta $0322       ; Expect $77 (Flags unchanged by RTS)
         lda #$03
         sta $0302       ; Expect $03
         jmp done

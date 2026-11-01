@@ -4,7 +4,7 @@
 ; Done: $C087
 ; Checks the difference, borrow in/out (C=0 means borrow), and the N/Z/C/V flags.
 ; Each case sets C, D and V first (via PLP).
-; Binary mode only (D=0); decimal mode is tested separately in sbc_imm_dec.
+; Binary mode only (D=0): decimal (BCD) mode is not supported, so it is not tested.
 ; The pointer address (base + X) must wrap within the zero page, and a
 ; pointer at $FF must take its high byte from $00, not $0100.
 ; Trap values catch a CPU that fails to wrap.

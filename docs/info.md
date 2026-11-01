@@ -11,6 +11,8 @@ You can also include images in this folder and reference them in the markdown. E
 
 Explain how your project works
 
+**Limitations:** decimal (BCD) mode is not supported. `ADC` and `SBC` ignore the D flag and always use binary arithmetic.
+
 ## How to test
 
 Explain how to use your project

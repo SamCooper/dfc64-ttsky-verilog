@@ -4,7 +4,7 @@
 ; Done: $C09C
 ; Checks the difference, borrow in/out (C=0 means borrow), and the N/Z/C/V flags.
 ; Each case sets C, D and V first (via PLP).
-; Binary mode only (D=0); decimal mode is tested separately in sbc_imm_dec.
+; Binary mode only (D=0): decimal (BCD) mode is not supported, so it is not tested.
 ; Covers no page cross, page cross (carry into the high byte), a pointer at $FF
 ; (high byte from $00, not $0100), Y = 0, and wrap-around from $FFxx into the zero page.
 ; Trap values catch a CPU that loses the carry or reads the pointer high byte from $0100.

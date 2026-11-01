@@ -4,7 +4,7 @@
 ; Done: $C076
 ; Checks the sum, carry in/out, and the N/Z/C/V flags.
 ; Each case sets C, D and V first (via PLP).
-; Binary mode only (D=0); decimal mode is tested separately in adc_imm_dec.
+; Binary mode only (D=0): decimal (BCD) mode is not supported, so it is not tested.
 ;
 ; Result layout:
 ;   $0300+  value produced by each case

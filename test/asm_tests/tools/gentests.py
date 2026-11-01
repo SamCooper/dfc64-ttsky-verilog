@@ -5,7 +5,8 @@ Each test is built as a list of source lines. Lines can carry a tag:
              with $FF when the expected value is $00 (so a missing write is caught)
   'expect' - PHP status capture; annotated with "Expect $xx at $01xx"
 
-Usage: python3 test/tools/gentests.py   (rewrites every test in test/)
+Usage: python3 test/asm_tests/tools/gentests.py [name ...]   (rewrites the named tests, or every test)
+Set GENTESTS_OUT=<dir> to write somewhere else (e.g. to diff against the committed tests).
 
 The test is assembled and run on the reference model (sim6502.py) to fill in the
 annotations and the JSON, and re-run with injected faults to check it detects them.
@@ -14,7 +15,7 @@ import os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sim6502 as S
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+OUT = os.environ.get("GENTESTS_OUT") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 H = lambda v: f"${v:02X}"
 HW = lambda v: f"${v:04X}"
 
@@ -138,8 +139,10 @@ class Src:
     def label(self, name):
         self.lines.append(f"{name}:")
 
-    def section(self, text):
+    def section(self, text, label=None):
         self.raw()
+        if label:
+            self.label(label)
         self.raw(f"        ; --- {text} ---")
 
     def set_p(self, p, why=""):
@@ -439,12 +442,6 @@ ADC_IMM = [
     dict(p=P1, a=0xFF, m=0x00, desc="binary, C=1: $FF + $00 + 1 = $00 (carry out)"),
     dict(p=P1, a=0x3F, m=0x40, desc="binary, C=1: $3F + $40 + 1 = $80 (overflow)"),
     dict(p=P0 | 0x40, a=0x10, m=0x20, desc="binary, V=1 before: $10 + $20 = $30 (V cleared)"),
-    dict(p=P0 | 0x08, a=0x09, m=0x01, desc="decimal, C=0: 09 + 01 = 10"),
-    dict(p=P0 | 0x08, a=0x12, m=0x34, desc="decimal, C=0: 12 + 34 = 46"),
-    dict(p=P1 | 0x08, a=0x58, m=0x46, desc="decimal, C=1: 58 + 46 + 1 = 05, carry out"),
-    dict(p=P0 | 0x08, a=0x99, m=0x01, desc="decimal, C=0: 99 + 01 = 00, carry out (NMOS: Z from binary result)"),
-    dict(p=P0 | 0x08, a=0x50, m=0x50, desc="decimal, C=0: 50 + 50 = 00, carry out (NMOS: N and V from the intermediate result)"),
-    dict(p=P1 | 0x08, a=0x99, m=0x00, desc="decimal, C=1: 99 + 00 + 1 = 00, carry out"),
 ]
 SBC_IMM = [
     dict(p=P1, a=0x05, m=0x03, desc="binary, C=1: $05 - $03 = $02"),
@@ -455,12 +452,6 @@ SBC_IMM = [
     dict(p=P0, a=0x00, m=0x00, desc="binary, C=0: $00 - $00 - 1 = $FF (borrow)"),
     dict(p=P1, a=0x40, m=0x40, desc="binary, C=1: $40 - $40 = $00"),
     dict(p=P0, a=0x01, m=0x00, desc="binary, C=0: $01 - $00 - 1 = $00"),
-    dict(p=P1 | 0x08, a=0x46, m=0x12, desc="decimal, C=1: 46 - 12 = 34"),
-    dict(p=P1 | 0x08, a=0x10, m=0x01, desc="decimal, C=1: 10 - 01 = 09"),
-    dict(p=P1 | 0x08, a=0x00, m=0x01, desc="decimal, C=1: 00 - 01 = 99 (borrow)"),
-    dict(p=P0 | 0x08, a=0x32, m=0x02, desc="decimal, C=0: 32 - 02 - 1 = 29"),
-    dict(p=P1 | 0x08, a=0x21, m=0x34, desc="decimal, C=1: 21 - 34 = 87 (borrow)"),
-    dict(p=P0 | 0x08, a=0x00, m=0x00, desc="decimal, C=0: 00 - 00 - 1 = 99 (borrow)"),
 ]
 ADC_MODE = [dict(p=P0 | 0x40, a=0x50, m=0x0A), dict(p=P1, a=0x50, m=0x54), dict(p=P0, a=0xFF, m=0x01),
             dict(p=P1, a=0x7E, m=0x00), dict(p=P0, a=0x1E, m=0x1E)]
@@ -470,19 +461,11 @@ ARITH_ABOUT = {"ADC": ["Checks the sum, carry in/out, and the N/Z/C/V flags.",
                        "Each case sets C, D and V first (via PLP)."],
                "SBC": ["Checks the difference, borrow in/out (C=0 means borrow), and the N/Z/C/V flags.",
                        "Each case sets C, D and V first (via PLP)."]}
-BINARY_ONLY = "Binary mode only (D=0); decimal mode is tested separately in {}_imm_dec."
+BINARY_ONLY = "Binary mode only (D=0): decimal (BCD) mode is not supported, so it is not tested."
 for mn, imm, mod in (("ADC", ADC_IMM, ADC_MODE), ("SBC", SBC_IMM, SBC_MODE)):
-    binary = [c for c in imm if not c["p"] & 0x08]
-    decimal = [c for c in imm if c["p"] & 0x08]
     for mode in ALU_MODES:
-        add(read_test(mn, mode, "A", binary if mode == "imm" else mod, ARITH_ABOUT[mn],
-                      [BINARY_ONLY.format(mn.lower())]))
-    add(read_test(mn, "imm", "A", decimal, ARITH_ABOUT[mn],
-                  ["Decimal mode (D=1) only; run this after the binary-mode tests pass.",
-                   "Flags follow NMOS behaviour:",
-                   "ADC: N and V from the intermediate result, Z from the binary sum;" if mn == "ADC" else
-                   "SBC: N, V and Z from the binary difference."],
-                  suffix="_dec", title_extra=", decimal mode"))
+        add(read_test(mn, mode, "A", imm if mode == "imm" else mod, ARITH_ABOUT[mn],
+                      [BINARY_ONLY]))
 
 # --- Compares --------------------------------------------------------------
 CMP_IMM = [dict(a=0x5A, m=0x5A, desc="equal (Z=1, C=1)"), dict(a=0x5A, m=0xA5, desc="register < operand (C=0)"),
@@ -754,9 +737,9 @@ t = add(Test("jmp_abs", [opc("JMP", "abs")], "JMP absolute",
              ["Jumps forward, backward and to another page. Each target stores a marker;",
               "skipped code stores $EE."], prologue_p=PROLOGUE_P, layout=False))
 t.body.section("Case 1: jump forward over a failure marker")
-t.body.ins("jmp j1"); t.body.ins("lda #$EE"); t.body.ins("sta $0300", tag="result")
+t.body.ins("jmp j1"); t.body.ins("lda #$EE"); t.body.ins("sta $0300", tag="result"); t.body.ins("jmp c2")
 t.body.label("j1"); t.body.ins("php", tag="expect"); t.body.ins("lda #$01"); t.body.ins("sta $0300", tag="result")
-t.body.section("Case 2: jump to another page ($C500), which jumps back")
+t.body.section("Case 2: jump to another page ($C500), which jumps back", "c2")
 t.body.ins("jmp j2"); t.body.label("j2_back")
 t.body.section("Case 3: jump backward")
 t.body.ins("jmp j3_fwd")
@@ -767,24 +750,24 @@ t.tail.raw(); t.tail.ins(".org $C500")
 t.tail.label("j2"); t.tail.ins("php", tag="expect"); t.tail.ins("lda #$02"); t.tail.ins("sta $0301", tag="result"); t.tail.ins("jmp j2_back")
 
 t = add(Test("jmp_ind", [opc("JMP", "ind")], "JMP (indirect)",
-             ["Jumps through a pointer in RAM. Case 2 checks the NMOS page-wrap bug:",
-              "JMP ($04FF) takes the low byte from $04FF and the high byte from $0400, not $0500.",
-              "A CPU without the bug lands on the $E2 marker."], prologue_p=PROLOGUE_P, layout=False))
+             ["Jumps through a pointer in RAM. Case 2 checks that the NMOS page-wrap bug is NOT present:",
+              "JMP ($04FF) takes the low byte from $04FF and the high byte from $0500, not $0400.",
+              "A CPU with the bug lands on the $E2 marker."], prologue_p=PROLOGUE_P, layout=False))
 t.setup.raw("        ; Case 1 pointer at $0410 -> t1")
 t.setup.ins("lda #<t1"); t.setup.ins("sta $0410"); t.setup.ins("lda #>t1"); t.setup.ins("sta $0411")
-t.setup.raw("        ; Case 2 pointer at $04FF: low $40, high from $0400 = $C5 (NMOS), $0500 = $C6 (fixed)")
+t.setup.raw("        ; Case 2 pointer at $04FF: low $40, high from $0500 = $C6 (correct), $0400 = $C5 (NMOS bug)")
 t.setup.seed(0x04FF, 0x40); t.setup.seed(0x0400, 0xC5); t.setup.seed(0x0500, 0xC6)
 t.body.section("Case 1: pointer within one page")
 t.body.ins("jmp ($0410)")
 t.body.ins("lda #$EE"); t.body.ins("sta $0300", tag="result"); t.body.ins("jmp c2")
 t.body.label("t1"); t.body.ins("php", tag="expect"); t.body.ins("lda #$01"); t.body.ins("sta $0300", tag="result")
-t.body.section("Case 2: pointer at a page end ($04FF), NMOS wrap bug")
+t.body.section("Case 2: pointer at a page end ($04FF), high byte from the next page")
 t.body.label("c2"); t.body.ins("jmp ($04FF)")
 t.body.ins("lda #$EE"); t.body.ins("sta $0301", tag="result"); t.body.ins("jmp done")
 t.tail.raw(); t.tail.ins(".org $C540")
-t.tail.label("t2"); t.tail.ins("php", tag="expect"); t.tail.ins("lda #$02", "NMOS: high byte from $0400"); t.tail.ins("sta $0301", tag="result"); t.tail.ins("jmp done")
+t.tail.label("t2_nmos"); t.tail.ins("lda #$E2", "Wrong: high byte from $0400 (NMOS bug)"); t.tail.ins("sta $0301", tag="result"); t.tail.ins("jmp done")
 t.tail.raw(); t.tail.ins(".org $C640")
-t.tail.label("t2_fixed"); t.tail.ins("lda #$E2", "Wrong: high byte from $0500"); t.tail.ins("sta $0301", tag="result"); t.tail.ins("jmp done")
+t.tail.label("t2"); t.tail.ins("php", tag="expect"); t.tail.ins("lda #$02", "High byte from $0500"); t.tail.ins("sta $0301", tag="result"); t.tail.ins("jmp done")
 
 # --- JSR / RTS / RTI / BRK ---------------------------------------------------
 t = add(Test("jsr", [opc("JSR", "abs")], "JSR absolute",
@@ -794,17 +777,19 @@ t = add(Test("jsr", [opc("JSR", "abs")], "JSR absolute",
 t.body.section("Case 1: SP = $00, pushes to $0100 and $01FF (wrap)")
 t.body.ins("ldx #$00"); t.body.ins("txs")
 t.body.ins("jsr sub1", tag="result"); t.body.label("ret1")
-t.body.section("Case 2: JSR in mid-page")
+t.body.section("Case 2: JSR in mid-page, SP = $FD")
+t.body.ins("ldx #$FD"); t.body.ins("txs")
 t.body.ins("jsr sub2", tag="result"); t.body.label("ret2")
-t.body.section("Case 3: JSR at $C2FE; its last byte is $C300, so the pushed address needs a carry")
+t.body.section("Case 3: SP = $FA, JSR at $C2FE; its last byte is $C300, so the pushed address needs a carry")
+t.body.ins("ldx #$FA"); t.body.ins("txs")
 t.body.ins("jmp c3")
 t.tail.raw(); t.tail.ins(".org $C2FE")
 t.tail.label("c3"); t.tail.ins("jsr sub3", tag="result")
 t.tail.label("ret3"); t.tail.ins("jmp done")
 t.tail.raw(); t.tail.ins(".org $C600")
 for n, ret in ((1, "ret1"), (2, "ret2"), (3, "ret3")):
-    t.tail.label(f"sub{n}"); t.tail.ins("tsx"); t.tail.ins(f"stx ${0x30F + n:04X}", "SP after the JSR", tag="result")
-    t.tail.ins("php", "Flags unchanged by JSR", tag="expect"); t.tail.ins(f"lda #{H(n)}"); t.tail.ins(f"sta ${0x2FF + n:04X}", tag="result")
+    t.tail.label(f"sub{n}"); t.tail.ins("php"); t.tail.ins("pla"); t.tail.ins(f"sta ${0x31F + n:04X}", "Flags unchanged by JSR", tag="result")
+    t.tail.ins("tsx"); t.tail.ins(f"stx ${0x30F + n:04X}", "SP after the JSR", tag="result"); t.tail.ins(f"lda #{H(n)}"); t.tail.ins(f"sta ${0x2FF + n:04X}", tag="result")
     t.tail.ins(f"jmp {ret}")
 
 t = add(Test("rts", [opc("RTS", "impl")], "RTS implied",
@@ -814,10 +799,11 @@ t = add(Test("rts", [opc("RTS", "impl")], "RTS implied",
 t.body.section("Case 1: return to r1")
 t.body.ins("lda #>(r1-1)"); t.body.ins("pha"); t.body.ins("lda #<(r1-1)"); t.body.ins("pha")
 t.body.ins("rts")
-t.body.ins("lda #$EE"); t.body.ins("sta $0300", tag="result")
+t.body.ins("lda #$EE"); t.body.ins("sta $0300", tag="result"); t.body.ins("jmp c2")
 t.body.label("r1"); t.body.ins("tsx"); t.body.ins("stx $0310", "SP after the RTS", tag="result")
-t.body.ins("php", "Flags unchanged by RTS", tag="expect"); t.body.ins("lda #$01"); t.body.ins("sta $0300", tag="result")
-t.body.section("Case 2: pulled address $C4FF; +1 must carry into the high byte -> $C500")
+t.body.ins("php"); t.body.ins("pla"); t.body.ins("sta $0320", "Flags unchanged by RTS", tag="result"); t.body.ins("lda #$01"); t.body.ins("sta $0300", tag="result")
+t.body.section("Case 2: SP = $FE, pulled address $C4FF; +1 must carry into the high byte -> $C500", "c2")
+t.body.ins("ldx #$FE"); t.body.ins("txs")
 t.body.ins("lda #>(r2-1)"); t.body.ins("pha"); t.body.ins("lda #<(r2-1)"); t.body.ins("pha")
 t.body.ins("rts")
 t.body.section("Case 3: SP = $FE, pulls from $01FF and $0100 (wrap)")
@@ -830,30 +816,31 @@ t.tail.raw(); t.tail.ins(".org $C400")
 t.tail.label("r2_bad"); t.tail.ins("lda #$E2", "Wrong: no carry into the high byte"); t.tail.ins("sta $0301", tag="result"); t.tail.ins("jmp c3")
 t.tail.raw(); t.tail.ins(".org $C500")
 t.tail.label("r2"); t.tail.ins("tsx"); t.tail.ins("stx $0311", "SP after the RTS", tag="result")
-t.tail.ins("php", "Flags unchanged by RTS", tag="expect"); t.tail.ins("lda #$02"); t.tail.ins("sta $0301", tag="result"); t.tail.ins("jmp c3")
+t.tail.ins("php"); t.tail.ins("pla"); t.tail.ins("sta $0321", "Flags unchanged by RTS", tag="result"); t.tail.ins("lda #$02"); t.tail.ins("sta $0301", tag="result"); t.tail.ins("jmp c3")
 t.tail.raw(); t.tail.ins(".org $C600")
 t.tail.label("r3"); t.tail.ins("tsx"); t.tail.ins("stx $0312", "SP after the RTS", tag="result")
-t.tail.ins("php", "Flags unchanged by RTS", tag="expect"); t.tail.ins("lda #$03"); t.tail.ins("sta $0302", tag="result"); t.tail.ins("jmp done")
+t.tail.ins("php"); t.tail.ins("pla"); t.tail.ins("sta $0322", "Flags unchanged by RTS", tag="result"); t.tail.ins("lda #$03"); t.tail.ins("sta $0302", tag="result"); t.tail.ins("jmp done")
 
 t = add(Test("rti", [opc("RTI", "impl")], "RTI implied",
              ["Pulls the status then the address, and continues at that address (no +1).",
               "B and bit 5 of the pulled status are ignored. Each target starts with a PHP",
               "(so landing one byte late skips it), then stores a marker."], prologue_p=None, layout=False))
 for n, (p, sp) in enumerate([(0xFF, None), (0x00, None), (0xC3, 0xFD)], 1):
+    lbl = f"c{n}" if n > 1 else None
     if sp is None:
-        t.body.section(f"Case {n}: frame with status {H(p)}")
+        t.body.section(f"Case {n}: frame with status {H(p)}", lbl)
         t.body.ins(f"lda #>i{n}"); t.body.ins("pha"); t.body.ins(f"lda #<i{n}"); t.body.ins("pha")
         t.body.ins(f"lda #{H(p)}"); t.body.ins("pha")
     else:
-        t.body.section(f"Case {n}: SP = $FD, frame at $01FE, $01FF, $0100 (wrap), status {H(p)}")
+        t.body.section(f"Case {n}: SP = $FD, frame at $01FE, $01FF, $0100 (wrap), status {H(p)}", lbl)
         t.body.ins(f"lda #{H(p)}"); t.body.ins("sta $01FE")
         t.body.ins(f"lda #<i{n}"); t.body.ins("sta $01FF")
         t.body.ins(f"lda #>i{n}"); t.body.ins("sta $0100")
         t.body.ins("ldx #$FD"); t.body.ins("txs")
     t.body.ins(f"ldy #{H(opposite(p))}", "Make N/Z differ before the RTI")
     t.body.ins("rti")
-    t.body.ins("lda #$EE"); t.body.ins(f"sta ${0x2FF + n:04X}", tag="result")
-    t.body.label(f"i{n}"); t.body.ins("php", "Restored status", tag="expect")
+    t.body.ins("lda #$EE"); t.body.ins(f"sta ${0x2FF + n:04X}", tag="result"); t.body.ins(f"jmp {'c%d' % (n + 1) if n < 3 else 'done'}")
+    t.body.label(f"i{n}"); t.body.ins("php"); t.body.ins("pla"); t.body.ins(f"sta ${0x30F + n:04X}", "Restored status", tag="result")
     t.body.ins(f"lda #{H(n)}"); t.body.ins(f"sta ${0x2FF + n:04X}", tag="result")
 
 t = add(Test("brk", [opc("BRK", "impl")], "BRK implied",
@@ -886,7 +873,10 @@ if __name__ == "__main__":
     covered = {o for t in ALL for o in t.opcodes}
     assert covered == set(S.TABLE), sorted(set(S.TABLE) - covered)
     problems = 0
+    only = set(sys.argv[1:])
     for t in ALL:
+        if only and t.name not in only:
+            continue
         fm, missed = build(t)
         tries = 0
         while set(missed) & ADDR_FAULTS and getattr(t, "factory", None) and tries < len(TRAP_POOL):
@@ -896,4 +886,4 @@ if __name__ == "__main__":
         if missed:
             problems += 1
             print(f"{t.name:<10} faults {sum(fm.values())}/{len(fm)} MISSED {missed}")
-    print(f"{len(ALL)} tests written, {problems} with problems")
+    print(f"{len(only) or len(ALL)} tests written, {problems} with problems")

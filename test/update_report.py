@@ -13,7 +13,6 @@ Usage: python3 test/tools/update_report.py [results.json] [report.md]
     a "Progress" line under each instruction heading,
     and the block between <!-- results:start --> / <!-- results:end --> with the
     last-run totals and the failing tests.
-  The decimal-mode (D=1) entries count towards their instruction's progress only.
 """
 import json, os, re, sys
 
@@ -23,7 +22,7 @@ RESULTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "asm_results.
 CYCLES = os.path.join(ROOT, "src", "opcode_cycles.json")
 CYCLES_COLUMN = 7    # index of the DFC64 Cycles cell when a row is split on "|"
 
-ROW = re.compile(r"^\| \[(.)\] \| \$([0-9A-F]{2})( \(D=1\))? \| ([^|]+?) \|")
+ROW = re.compile(r"^\| \[(.)\] \| \$([0-9A-F]{2}) \| ([^|]+?) \|")
 LINK = re.compile(r"\[[A-Za-z0-9_]+\.asm\]\(test/asm_tests/([A-Za-z0-9_]+)\.asm\)")
 START, END = "<!-- results:start -->", "<!-- results:end -->"
 PROGRESS = "**Progress:**"
@@ -60,7 +59,7 @@ def update(results_path=RESULTS, report_path=REPORT, cycles_path=CYCLES):
         if not in_ins:
             continue
         if line.startswith("### "):
-            cats.append(dict(name=line[4:].strip(), ins=0, ops=0, done=0, fail=0, dec=0, dec_done=0))
+            cats.append(dict(name=line[4:].strip(), ins=0, ops=0, done=0, fail=0))
             continue
         if line.startswith("#### "):
             cats[-1]["ins"] += 1
@@ -69,7 +68,7 @@ def update(results_path=RESULTS, report_path=REPORT, cycles_path=CYCLES):
         m = ROW.match(line)
         if not m:
             continue
-        mark, decimal, mode = m.group(1), bool(m.group(3)), m.group(4).strip()
+        mark, mode = m.group(1), m.group(3).strip()
         entry = cycles.get(m.group(2))
         cells = line.split("|")
         if entry and len(cells) == CYCLES_COLUMN + 3:
@@ -85,10 +84,6 @@ def update(results_path=RESULTS, report_path=REPORT, cycles_path=CYCLES):
         c, ins = cats[-1], insts[-1]
         ins["rows"] += 1
         ins["done"] += mark == "x"
-        if decimal:
-            c["dec"] += 1
-            c["dec_done"] += mark == "x"
-            continue
         c["ops"] += 1
         c["done"] += mark == "x"
         c["fail"] += mark == "!"
@@ -142,10 +137,8 @@ def update(results_path=RESULTS, report_path=REPORT, cycles_path=CYCLES):
             out += ["", f"{PROGRESS} {ins['done']} of {ins['rows']} done ({pct(ins['done'], ins['rows'])})"]
     lines = out
 
-    # 5. Results block (after the decimal-mode note that follows the Summary table)
-    dec = sum(c["dec"] for c in cats)
-    dec_done = sum(c["dec_done"] for c in cats)
-    tests_in_report = tot["ops"] + dec
+    # 5. Results block (after the note that follows the Summary table)
+    tests_in_report = tot["ops"]
     results = {t: r for t, r in results.items() if t in linked}   # ignore stale/unlinked results
     passed = sorted(t for t, r in results.items() if r["status"] == "pass")
     failed = sorted(t for t, r in results.items() if r["status"] != "pass")
@@ -156,7 +149,6 @@ def update(results_path=RESULTS, report_path=REPORT, cycles_path=CYCLES):
     else:
         block.append("**Last results:** no test results yet. Run the cocotb suite (test_asm.py) "
                      "or `python3 test/tools/update_report.py` after a run.")
-    block += ["", f"**Decimal mode:** {dec_done} of {dec} done ({pct(dec_done, dec)})."]
     if failed:
         block += ["", "| Failing test | Reason |", "|--------------|--------|"]
         for t in failed:
