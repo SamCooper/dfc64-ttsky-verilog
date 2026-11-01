@@ -44,6 +44,7 @@ module dfc64_sr (
                     OP_CLV_IMP: status_out[FLAG_V] <= 0;
                     OP_SEC_IMP: status_out[FLAG_C] <= 1;
                     OP_SED_IMP: status_out[FLAG_D] <= 1;
+                    OP_BRK_IMP,
                     OP_SEI_IMP: status_out[FLAG_I] <= 1;
                     OP_PLP_IMP,
                     OP_RTI_IMP: begin

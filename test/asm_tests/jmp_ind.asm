@@ -2,9 +2,9 @@
 ; Test: JMP (indirect) ($6C)
 ; Cycles: 74
 ; Done: $C03C
-; Jumps through a pointer in RAM. Case 2 checks the NMOS page-wrap bug:
-; JMP ($04FF) takes the low byte from $04FF and the high byte from $0400, not $0500.
-; A CPU without the bug lands on the $E2 marker.
+; Jumps through a pointer in RAM. Case 2 checks that the NMOS page-wrap bug is NOT present:
+; JMP ($04FF) takes the low byte from $04FF and the high byte from $0500, not $0400.
+; A CPU with the bug lands on the $E2 marker.
 ; Initial status (via PLP): V=1 I=1 C=1 N=0 D=0 Z=0
 ; Zero results are written over a $FF pre-seed so that a missing write is detected.
 
@@ -22,7 +22,7 @@ reset:
         sta $0410
         lda #>t1
         sta $0411
-        ; Case 2 pointer at $04FF: low $40, high from $0400 = $C5 (NMOS), $0500 = $C6 (fixed)
+        ; Case 2 pointer at $04FF: low $40, high from $0500 = $C6 (correct), $0400 = $C5 (NMOS bug)
         lda #$40
         sta $04FF
         lda #$C5
@@ -40,7 +40,7 @@ t1:
         lda #$01
         sta $0300       ; Expect $01
 
-        ; --- Case 2: pointer at a page end ($04FF), NMOS wrap bug ---
+        ; --- Case 2: pointer at a page end ($04FF), high byte from the next page ---
 c2:
         jmp ($04FF)
         lda #$EE
@@ -51,16 +51,16 @@ done:
         jmp done        ; Infinite loop to terminate
 
         .org $C540
-t2:
-        php             ; Expect $75 at $01FE
-        lda #$02        ; NMOS: high byte from $0400
-        sta $0301       ; Expect $02
+t2_nmos:
+        lda #$E2        ; Wrong: high byte from $0400 (NMOS bug)
+        sta $0301
         jmp done
 
         .org $C640
-t2_fixed:
-        lda #$E2        ; Wrong: high byte from $0500
-        sta $0301
+t2:
+        php             ; Expect $75 at $01FE
+        lda #$02        ; High byte from $0500
+        sta $0301       ; Expect $02
         jmp done
 
         .org $FFFA

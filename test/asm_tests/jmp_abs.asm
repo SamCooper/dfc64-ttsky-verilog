@@ -1,7 +1,7 @@
 ; Target: vasm6502_oldstyle
 ; Test: JMP absolute ($4C)
 ; Cycles: 58
-; Done: $C02C
+; Done: $C02F
 ; Jumps forward, backward and to another page. Each target stores a marker;
 ; skipped code stores $EE.
 ; Initial status (via PLP): V=1 I=1 C=1 N=0 D=0 Z=0
@@ -19,11 +19,13 @@ reset:
         jmp j1
         lda #$EE
         sta $0300
+        jmp c2
 j1:
         php             ; Expect $75 at $01FF
         lda #$01
         sta $0300       ; Expect $01
 
+c2:
         ; --- Case 2: jump to another page ($C500), which jumps back ---
         jmp j2
 j2_back:

@@ -1,4 +1,5 @@
 {
+    "00": {"id": "OP_BRK_IMP", "cycles": 21},
     "01": {"id": "OP_ORA_IND_X", "cycles": 12},
     "05": {"id": "OP_ORA_ZP", "cycles": 7},
     "06": {"id": "OP_ASL_ZP", "cycles": 8},
@@ -15,7 +16,7 @@
     "19": {"id": "OP_ORA_ABS_Y", "cycles": 10},
     "1D": {"id": "OP_ORA_ABS_X", "cycles": 10},
     "1E": {"id": "OP_ASL_ABS_X", "cycles": 11},
-    "20": {"id": "OP_JSR_ABS", "cycles": 16},
+    "20": {"id": "OP_JSR_ABS", "cycles": 15},
     "21": {"id": "OP_AND_IND_X", "cycles": 12},
     "25": {"id": "OP_AND_ZP", "cycles": 7},
     "26": {"id": "OP_ROL_ZP", "cycles": 8},
@@ -32,7 +33,7 @@
     "39": {"id": "OP_AND_ABS_Y", "cycles": 10},
     "3D": {"id": "OP_AND_ABS_X", "cycles": 10},
     "3E": {"id": "OP_ROL_ABS_X", "cycles": 11},
-    "40": {"id": "OP_RTI_IMP", "cycles": 15},
+    "40": {"id": "OP_RTI_IMP", "cycles": 14},
     "41": {"id": "OP_EOR_IND_X", "cycles": 12},
     "45": {"id": "OP_EOR_ZP", "cycles": 7},
     "46": {"id": "OP_LSR_ZP", "cycles": 8},

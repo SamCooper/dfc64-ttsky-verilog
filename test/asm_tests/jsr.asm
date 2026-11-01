@@ -1,7 +1,7 @@
 ; Target: vasm6502_oldstyle
 ; Test: JSR absolute ($20)
-; Cycles: 101
-; Done: $C018
+; Cycles: 133
+; Done: $C01E
 ; Pushes the address of its own last byte (PC+2), high byte first, then jumps.
 ; Subroutines record SP (via TSX) and return with JMP, so RTS is not needed.
 ; Case 1 starts with SP = $00 to check the stack-page wrap.
@@ -26,11 +26,15 @@ reset:
         jsr sub1        ; Expect $C0 at $0100, $11 at $01FF
 ret1:
 
-        ; --- Case 2: JSR in mid-page ---
-        jsr sub2        ; Expect $C0 at $01FD, $14 at $01FC
+        ; --- Case 2: JSR in mid-page, SP = $FD ---
+        ldx #$FD
+        txs
+        jsr sub2        ; Expect $C0 at $01FD, $17 at $01FC
 ret2:
 
-        ; --- Case 3: JSR at $C2FE; its last byte is $C300, so the pushed address needs a carry ---
+        ; --- Case 3: SP = $FA, JSR at $C2FE; its last byte is $C300, so the pushed address needs a carry ---
+        ldx #$FA
+        txs
         jmp c3
 
 done:
@@ -44,23 +48,29 @@ ret3:
 
         .org $C600
 sub1:
+        php
+        pla
+        sta $0320       ; Expect $77 (Flags unchanged by JSR)
         tsx
         stx $0310       ; Expect $FE (SP after the JSR)
-        php             ; Expect $F5 at $01FE (Flags unchanged by JSR)
         lda #$01
         sta $0300       ; Expect $01
         jmp ret1
 sub2:
+        php
+        pla
+        sta $0321       ; Expect $F5 (Flags unchanged by JSR)
         tsx
         stx $0311       ; Expect $FB (SP after the JSR)
-        php             ; Expect $F5 at $01FB (Flags unchanged by JSR)
         lda #$02
         sta $0301       ; Expect $02
         jmp ret2
 sub3:
+        php
+        pla
+        sta $0322       ; Expect $F5 (Flags unchanged by JSR)
         tsx
         stx $0312       ; Expect $F8 (SP after the JSR)
-        php             ; Expect $F5 at $01F8 (Flags unchanged by JSR)
         lda #$03
         sta $0302       ; Expect $03
         jmp ret3

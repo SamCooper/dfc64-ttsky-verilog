@@ -59,10 +59,17 @@ module dfc64_program_counter (
                         `endif
                         pc_output <= pc_output + b_mux;
                     end else begin
-                        `ifdef SIM
-                            $display("%0t PC JMP to %h!", $realtime, pc_input);
-                        `endif
-                        pc_output <= pc_input;
+                        if (jmp_op == 3'b000 && pc_output != 16'hFFFE) begin
+                            `ifdef SIM
+                                $display("%0t PC SET BRK! %h %h", $realtime, pc_output, pc_input);
+                            `endif
+                            pc_output <= 16'hFFFE;
+                        end else begin
+                            `ifdef SIM
+                                $display("%0t PC JMP to %h!", $realtime, pc_input);
+                            `endif
+                            pc_output <= pc_input;
+                        end
                     end
                 end
                 default: ;

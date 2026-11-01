@@ -1,7 +1,7 @@
 ; Target: vasm6502_oldstyle
 ; Test: RTI implied ($40)
-; Cycles: 107
-; Done: $C051
+; Cycles: 131
+; Done: $C066
 ; Pulls the status then the address, and continues at that address (no +1).
 ; B and bit 5 of the pulled status are ignored. Each target starts with a PHP
 ; (so landing one byte late skips it), then stores a marker.
@@ -23,11 +23,15 @@ reset:
         rti
         lda #$EE
         sta $0300
+        jmp c2
 i1:
-        php             ; Expect $FF at $01FF (Restored status)
+        php
+        pla
+        sta $0310       ; Expect $FF (Restored status)
         lda #$01
         sta $0300       ; Expect $01
 
+c2:
         ; --- Case 2: frame with status $00 ---
         lda #>i2
         pha
@@ -39,11 +43,15 @@ i1:
         rti
         lda #$EE
         sta $0301
+        jmp c3
 i2:
-        php             ; Expect $30 at $01FE (Restored status)
+        php
+        pla
+        sta $0311       ; Expect $30 (Restored status)
         lda #$02
         sta $0301       ; Expect $02
 
+c3:
         ; --- Case 3: SP = $FD, frame at $01FE, $01FF, $0100 (wrap), status $C3 ---
         lda #$C3
         sta $01FE
@@ -57,8 +65,11 @@ i2:
         rti
         lda #$EE
         sta $0302
+        jmp done
 i3:
-        php             ; Expect $F3 at $0100 (Restored status)
+        php
+        pla
+        sta $0312       ; Expect $F3 (Restored status)
         lda #$03
         sta $0302       ; Expect $03
 

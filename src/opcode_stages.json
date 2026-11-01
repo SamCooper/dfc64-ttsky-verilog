@@ -12,8 +12,7 @@
             {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_BRN"}
         ]},
         {"id": "OP_JSR_ABS", "stages": [
-            {"pc_op": "PC_OP_DEC"},
-            {"read_reg_sel1": "REG_SP", "write_reg_sel": "REG_ALE"},
+            {"pc_op": "PC_OP_DEC", "read_reg_sel1": "REG_SP", "write_reg_sel": "REG_ALE"},
             {"read_reg_sel1": "REG_ONE", "write_reg_sel": "REG_AHE"},
             {"mem_write_en": "true", "read_reg_sel1": "REG_PCH", "write_reg_sel": "REG_MEM"},
             {"alu_op": "ALU_OP_SUB", "write_en": "true", "read_reg_sel1": "REG_SP", "read_reg_sel2": "REG_ONE", "write_reg_sel": "REG_SP"},
@@ -30,8 +29,8 @@
             {"write_en": "true", "read_reg_sel1": "REG_SP", "read_reg_sel2": "REG_ONE", "write_reg_sel": "REG_SP"},
             {"read_reg_sel1": "REG_SP", "write_reg_sel": "REG_ALE"},
             {"write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_H"},
-            {"pc_op": "PC_OP_INC"},
-            {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_BRN"}
+            {"pc_op": "PC_OP_BRN"},
+            {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_INC"}
         ]},
         {"id": "OP_RTI_IMP", "stages": [
             {"write_en": "true", "read_reg_sel1": "REG_SP", "read_reg_sel2": "REG_ONE", "write_reg_sel": "REG_SP"},
@@ -44,7 +43,6 @@
             {"write_en": "true", "read_reg_sel1": "REG_SP", "read_reg_sel2": "REG_ONE", "write_reg_sel": "REG_SP"},
             {"read_reg_sel1": "REG_SP", "write_reg_sel": "REG_ALE"},
             {"write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_H"},
-            {"pc_op": "PC_OP_INC"},
             {"uJump": "UJMP_FETCH", "pc_op": "PC_OP_BRN"}
         ]},
         {"id": "OP_BCC_REL", "stages": [
@@ -730,6 +728,26 @@
         ]},
         {"id": "OP_TYA_IMP", "stages": [
             {"uJump": "UJMP_FETCH", "flags_ctl_nz": "true", "write_en": "true", "read_reg_sel1": "REG_Y", "write_reg_sel": "REG_A"}
+        ]},
+        {"id": "OP_BRK_IMP", "stages": [
+            {"pc_op": "PC_OP_INC", "read_reg_sel1": "REG_SP", "write_reg_sel": "REG_ALE"},
+            {"read_reg_sel1": "REG_ONE", "write_reg_sel": "REG_AHE"},
+            {"mem_write_en": "true", "read_reg_sel1": "REG_PCH", "write_reg_sel": "REG_MEM"},
+            {"alu_op": "ALU_OP_SUB", "write_en": "true", "read_reg_sel1": "REG_SP", "read_reg_sel2": "REG_ONE", "write_reg_sel": "REG_SP"},
+            {"read_reg_sel1": "REG_SP", "write_reg_sel": "REG_ALE"},
+            {"mem_write_en": "true", "read_reg_sel1": "REG_PCL", "write_reg_sel": "REG_MEM"},
+            {"alu_op": "ALU_OP_SUB", "write_en": "true", "read_reg_sel1": "REG_SP", "read_reg_sel2": "REG_ONE", "write_reg_sel": "REG_SP"},
+            {"read_reg_sel1": "REG_SP", "write_reg_sel": "REG_ALE"},
+            {"mem_write_en": "true", "read_reg_sel1": "REG_SR", "write_reg_sel": "REG_MEM"},
+            {"alu_op": "ALU_OP_SUB", "write_en": "true", "read_reg_sel1": "REG_SP", "read_reg_sel2": "REG_ONE", "write_reg_sel": "REG_SP"},
+            {"flags_opcode": true, "pc_op": "PC_OP_BRN"},
+            {"read_reg_sel1": "REG_PCL", "write_reg_sel": "REG_ALE"},
+            {"read_reg_sel1": "REG_PCH", "write_reg_sel": "REG_AHE"},
+            {"write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_L"},
+            {"al_inc": "true"},
+            {"write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_MEM", "write_reg_sel": "REG_IR_H"},
+            {"pc_op": "PC_OP_BRN"},
+            {"uJump": "UJMP_FETCH"}
         ]}
     ]
 }

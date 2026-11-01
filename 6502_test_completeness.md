@@ -73,7 +73,7 @@ ADC and SBC also have a separate decimal-mode (D=1) row each, so binary mode can
 | [adc_imm_dec](test/asm_tests/adc_imm_dec.asm) | [adc_imm_dec] RAM mismatch at 0x1fa: Expected 0xbd, got 0xbc |
 | [bit_abs](test/asm_tests/bit_abs.asm) | [bit_abs] RAM mismatch at 0x1fc: Expected 0xb5, got 0xf5 |
 | [bit_zp](test/asm_tests/bit_zp.asm) | [bit_zp] RAM mismatch at 0x1fc: Expected 0xb5, got 0xf5 |
-| [brk](test/asm_tests/brk.asm) | [brk] RAM mismatch at 0x1ec: Expected 0x34, got 0x0 |
+| [brk](test/asm_tests/brk.asm) | [brk] did not reach Done ($C01D) within 1648 clocks (expected 90 6502 cycles; Done read 0 time(s)); last reads: $FFFF $FFFF $FFFE $FFFE $FFFE $FFFE $FFFF $FF... |
 | [sbc_imm_dec](test/asm_tests/sbc_imm_dec.asm) | [sbc_imm_dec] RAM mismatch at 0x301: Expected 0x9, got 0xf |
 
 <!-- results:end -->
@@ -738,7 +738,7 @@ Flags affected: `-`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $20 | absolute | `JSR oper` | 3 | 6 | 16 | [jsr.asm](test/asm_tests/jsr.asm) / [jsr.json](test/asm_tests/jsr.json) |
+| [x] | $20 | absolute | `JSR oper` | 3 | 6 | 15 | [jsr.asm](test/asm_tests/jsr.asm) / [jsr.json](test/asm_tests/jsr.json) |
 
 #### RTS: Return from Subroutine
 
@@ -764,7 +764,7 @@ Flags affected: `I=1`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $00 | implied | `BRK` | 1 | 7 | | [brk.asm](test/asm_tests/brk.asm) / [brk.json](test/asm_tests/brk.json) |
+| [!] | $00 | implied | `BRK` | 1 | 7 | 18 | [brk.asm](test/asm_tests/brk.asm) / [brk.json](test/asm_tests/brk.json) |
 
 #### RTI: Return from Interrupt
 
