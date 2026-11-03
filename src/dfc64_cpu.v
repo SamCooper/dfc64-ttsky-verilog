@@ -87,6 +87,7 @@ module tt_um_samcooper_dfc64 (
       .ctl_carry(flags_ctl_c),
       .ctl_nz(flags_ctl_nz),
 
+      .alu_op(alu_op[3:2]),
       .opcode_in(ir[7:0]),
       .full_word_in(alu_result),
 

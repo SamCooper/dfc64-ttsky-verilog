@@ -36,8 +36,8 @@ parameter OP_BVC_REL   = 8'h50; // Branch if Overflow Clear
 parameter OP_BVS_REL   = 8'h70; // Branch if Overflow Set
 
 // --- BIT: Bit Test ---
-//parameter OP_BIT_ZP    = 8'h24;
-//parameter OP_BIT_ABS   = 8'h2C;
+parameter OP_BIT_ZP    = 8'h24;
+parameter OP_BIT_ABS   = 8'h2C;
 
 // --- BRK: Force Interrupt ---
 parameter OP_BRK_IMP   = 8'h00;

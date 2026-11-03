@@ -157,6 +157,15 @@
             {"read_reg_sel1": "REG_IR_H", "write_reg_sel": "REG_AHE"},
             {"uJump": "UJMP_FETCH", "alu_op": "ALU_OP_SBC", "flags_ctl_nz": "true", "flags_ctl_c": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_A", "read_reg_sel2": "REG_MEM", "write_reg_sel": "REG_A"}
         ]},
+        {"id": "OP_BIT_ABS", "stages": [
+            {"read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
+            {"read_reg_sel1": "REG_IR_H", "write_reg_sel": "REG_AHE"},
+            {"uJump": "UJMP_FETCH", "alu_op": "ALU_OP_BIT", "flags_ctl_nz": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_A", "read_reg_sel2": "REG_MEM", "write_reg_sel": "REG_ZERO"}
+        ]},
+        {"id": "OP_BIT_ZP", "stages": [
+            {"zp_clr_set": true, "read_reg_sel1": "REG_IR_L", "write_reg_sel": "REG_ALE"},
+            {"uJump": "UJMP_FETCH", "alu_op": "ALU_OP_BIT", "flags_ctl_nz": "true", "write_en": "true", "mem_read_en": "true", "read_reg_sel1": "REG_A", "read_reg_sel2": "REG_MEM", "write_reg_sel": "REG_ZERO"}
+        ]},
         {"id": "OP_AND_IMM", "stages": [
             {"uJump": "UJMP_FETCH", "alu_op": "ALU_OP_AND", "flags_ctl_nz": "true", "write_en": "true", "read_reg_sel1": "REG_A", "read_reg_sel2": "REG_IR_L", "write_reg_sel": "REG_A"}
         ]},

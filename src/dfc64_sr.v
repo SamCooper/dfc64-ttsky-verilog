@@ -7,6 +7,7 @@ module dfc64_sr (
     input  wire      ctl_nz,
 
     // Data Inputs
+    input  wire [1:0]  alu_op,
     input  wire [7:0]  opcode_in,     
     input  wire [7:0]  full_word_in,     // From standard data bus (e.g., for POP instruction)
     input  wire        alu_carry_in,    // From ALU
@@ -24,10 +25,6 @@ module dfc64_sr (
     localparam FLAG_I = 2;	// Interrupt (IRQ disable)
     localparam FLAG_Z = 1;	// Zero
     localparam FLAG_C = 0;	// Carry   
-
-    wire [3:0] is_v_op;
-    assign is_v_op[1:0] = opcode_in[1:0];
-    assign is_v_op[3:2] = opcode_in[6:5];
 
     always @ (posedge clk) begin
         if (!rst_n) begin
@@ -66,7 +63,7 @@ module dfc64_sr (
                     `endif
 
                     // need to handle V case of ADC and SBC
-                    if (is_v_op == 4'b1101) begin
+                    if (alu_op == 2'b11) begin
                         `ifdef SIM
                             $display("%0t SR set V opcode %b V%b!", $realtime, opcode_in, alu_overflow_in);
                         `endif

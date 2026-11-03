@@ -775,12 +775,12 @@ Flags affected: `from stack`
 
 Flags affected: `N=M7 V=M6 Z`
 
-**Progress:** 0 of 2 done (0%)
+**Progress:** 2 of 2 done (100%)
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [!] | $24 | zeropage | `BIT oper` | 2 | 3 | | [bit_zp.asm](test/asm_tests/bit_zp.asm) / [bit_zp.json](test/asm_tests/bit_zp.json) |
-| [!] | $2C | absolute | `BIT oper` | 3 | 4 | | [bit_abs.asm](test/asm_tests/bit_abs.asm) / [bit_abs.json](test/asm_tests/bit_abs.json) |
+| [x] | $24 | zeropage | `BIT oper` | 2 | 3 | 7 | [bit_zp.asm](test/asm_tests/bit_zp.asm) / [bit_zp.json](test/asm_tests/bit_zp.json) |
+| [x] | $2C | absolute | `BIT oper` | 3 | 4 | 10 | [bit_abs.asm](test/asm_tests/bit_abs.asm) / [bit_abs.json](test/asm_tests/bit_abs.json) |
 
 #### NOP: No Operation
 

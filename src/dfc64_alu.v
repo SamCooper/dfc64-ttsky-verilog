@@ -18,16 +18,17 @@ module dfc64_alu (
 );
     localparam ALU_OP_ADD = 4'b0000;
     localparam ALU_OP_SUB = 4'b0001;
-    localparam ALU_OP_ADC = 4'b0010;
-    localparam ALU_OP_SBC = 4'b0011;
-    localparam ALU_OP_CMP = 4'b0100;
-    localparam ALU_OP_AND = 4'b0101;
-    localparam ALU_OP_EOR = 4'b0110;
-    localparam ALU_OP_OR  = 4'b0111;
-    localparam ALU_OP_ASL = 4'b1000;
-    localparam ALU_OP_LSR = 4'b1001;
-    localparam ALU_OP_ROL = 4'b1010;
-    localparam ALU_OP_ROR = 4'b1011;
+    localparam ALU_OP_CMP = 4'b0010;
+    localparam ALU_OP_AND = 4'b0011;
+    localparam ALU_OP_EOR = 4'b0100;
+    localparam ALU_OP_OR  = 4'b0101;
+    localparam ALU_OP_ASL = 4'b0110;
+    localparam ALU_OP_LSR = 4'b0111;
+    localparam ALU_OP_ROL = 4'b1000;
+    localparam ALU_OP_ROR = 4'b1001;
+    localparam ALU_OP_ADC = 4'b1100;
+    localparam ALU_OP_SBC = 4'b1101;
+    localparam ALU_OP_BIT = 4'b1110;
 
     reg bit_addr_c;
 
@@ -61,6 +62,7 @@ module dfc64_alu (
                 result_data = add_sub_result;
                 alu_carry   = local_carry;
             end
+            ALU_OP_BIT,
             ALU_OP_AND: result_data = src_data1 & src_data2;
             ALU_OP_EOR: result_data = src_data1 ^ src_data2;
             ALU_OP_OR:  result_data = src_data1 | src_data2;
@@ -90,8 +92,8 @@ module dfc64_alu (
     wire b_sign = b_mux[7];
     wire res_sign = result_data[7];
 
-    assign alu_negative = result_data[7];
-    assign alu_overflow = (a_sign == b_sign) && (res_sign != a_sign);
+    assign alu_negative = (alu_op == ALU_OP_BIT) ? src_data2[7] : result_data[7];
+    assign alu_overflow = (alu_op == ALU_OP_BIT) ? src_data2[6] : ((a_sign == b_sign) && (res_sign != a_sign));
     assign alu_zero = (result_data == 8'b0);
 
     always @ (posedge clk) begin
