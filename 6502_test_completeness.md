@@ -57,17 +57,12 @@ The [Opcode Matrix](#opcode-matrix) is a 16×16 grid that cross-checks where eac
 | [Conditional Branch Instructions](#conditional-branch-instructions) | 8 | 8 | 8 | 0 | 0 | 100% |
 | [Jumps & Subroutines](#jumps--subroutines) | 3 | 4 | 4 | 0 | 0 | 100% |
 | [Interrupts](#interrupts) | 2 | 2 | 2 | 0 | 0 | 100% |
-| [Other](#other) | 2 | 3 | 1 | 2 | 2 | 33% |
-| **Total** | **56** | **151** | **149** | **2** | **2** | **98%** |
+| [Other](#other) | 2 | 3 | 3 | 0 | 0 | 100% |
+| **Total** | **56** | **151** | **151** | **0** | **0** | **100%** |
 
 <!-- results:start -->
 
-**Last results:** 149 passed, 2 failed, 0 not run (of 151 tests).
-
-| Failing test | Reason |
-|--------------|--------|
-| [bit_abs](test/asm_tests/bit_abs.asm) | [bit_abs] RAM mismatch at 0x1fc: Expected 0xb5, got 0xf5 |
-| [bit_zp](test/asm_tests/bit_zp.asm) | [bit_zp] RAM mismatch at 0x1fc: Expected 0xb5, got 0xf5 |
+**Last results:** 151 passed, 0 failed, 0 not run (of 151 tests).
 
 <!-- results:end -->
 
@@ -76,7 +71,7 @@ The [Opcode Matrix](#opcode-matrix) is a 16×16 grid that cross-checks where eac
 | Abbrev. | Mode | Syntax | Opcodes | Done | % Complete |
 |---------|------|--------|--------:|-----:|-----------:|
 | `A` | accumulator | `OPC A` | 4 | 4 | 100% |
-| `abs` | absolute | `OPC oper` | 23 | 22 | 95% |
+| `abs` | absolute | `OPC oper` | 23 | 23 | 100% |
 | `abs,X` | absolute,X | `OPC oper,X` | 15 | 15 | 100% |
 | `abs,Y` | absolute,Y | `OPC oper,Y` | 9 | 9 | 100% |
 | `#` | immediate | `OPC #oper` | 11 | 11 | 100% |
@@ -85,7 +80,7 @@ The [Opcode Matrix](#opcode-matrix) is a 16×16 grid that cross-checks where eac
 | `X,ind` | (indirect,X) | `OPC (oper,X)` | 8 | 8 | 100% |
 | `ind,Y` | (indirect),Y | `OPC (oper),Y` | 8 | 8 | 100% |
 | `rel` | relative | `OPC oper` | 8 | 8 | 100% |
-| `zpg` | zeropage | `OPC oper` | 21 | 20 | 95% |
+| `zpg` | zeropage | `OPC oper` | 21 | 21 | 100% |
 | `zpg,X` | zeropage,X | `OPC oper,X` | 16 | 16 | 100% |
 | `zpg,Y` | zeropage,Y | `OPC oper,Y` | 2 | 2 | 100% |
 
@@ -755,7 +750,7 @@ Flags affected: `I=1`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $00 | implied | `BRK` | 1 | 7 | 21 | [brk.asm](test/asm_tests/brk.asm) / [brk.json](test/asm_tests/brk.json) |
+| [x] | $00 | implied | `BRK` | 1 | 7 | 24 | [brk.asm](test/asm_tests/brk.asm) / [brk.json](test/asm_tests/brk.json) |
 
 #### RTI: Return from Interrupt
 

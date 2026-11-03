@@ -1,6 +1,9 @@
+`include "dfc64_opcodes.v"
 module dfc64_control_unit (
     input clk,     // clock
     input rst_n,   // reset_n - low to reset
+    input irq_n,   // irq_n -   low to IRQ
+    input nmi_n,   // nmi_n -   low to NMI
     input [7:0] ir,
     input [7:0]  mem_in,   // byte on the data bus (opcode being fetched)
 

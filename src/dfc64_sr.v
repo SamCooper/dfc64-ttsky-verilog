@@ -1,3 +1,4 @@
+`include "dfc64_opcodes.v"
 module dfc64_sr (
     input            clk,
     input            rst_n,   // reset_n - low to reset

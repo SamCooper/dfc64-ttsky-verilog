@@ -152,6 +152,8 @@ module tt_um_samcooper_dfc64 (
     dfc64_control_unit control_unit (
       .clk(clk),
       .rst_n(rst_n),
+      .irq_n(irq_n),
+      .nmi_n(nmi_n),
       .ir(ir[7:0]),
       .mem_in(uio_in),
 

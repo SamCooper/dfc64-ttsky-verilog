@@ -24,6 +24,17 @@
             `endif
             micro_pc <= RESET_MICRO_PC; // On power-up, start at the Fetch Routine
         end else begin
+            if (!nmi_n) begin
+                `ifdef SIM
+                    $display("%0t NMI!", $realtime);
+                `endif
+                is_nmi <= 1;
+            end else if (!irq_n) begin
+                `ifdef SIM
+                    $display("%0t IRQ!", $realtime);
+                `endif
+                is_irq <= 1;
+            end
             `ifdef SIM
                 $display("%0t Stage: %b %b %h %h %h", $realtime, current_micro_word, uJump, micro_pc, op, dispatch_address);
             `endif
@@ -38,8 +49,17 @@
                 UJMP_DISPATCH_3: begin
                     micro_pc <= (needs_two_extra) ? dispatch_address : micro_pc + 1;
                 end
-                UJMP_FETCH:    micro_pc <= 9'h00;
-                default:       micro_pc <= 9'h00;
+                default:         begin
+                    if (is_nmi) begin
+                        micro_pc <= 9'h1c3;
+                    end else if (is_irq) begin
+                        micro_pc <= 9'h1c3;
+                    end else begin
+                        micro_pc <= 9'h00;
+                    end
+                    is_irq <= 0;
+                    is_nmi <= 0;
+                end
             endcase
         end
     end

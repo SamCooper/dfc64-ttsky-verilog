@@ -739,7 +739,8 @@
             {"uJump": "UJMP_FETCH", "flags_ctl_nz": "true", "write_en": "true", "read_reg_sel1": "REG_Y", "write_reg_sel": "REG_A"}
         ]},
         {"id": "OP_BRK_IMP", "stages": [
-            {"pc_op": "PC_OP_INC", "read_reg_sel1": "REG_SP", "write_reg_sel": "REG_ALE"},
+            {"write_en": "true", "read_reg_sel1": "REG_ZERO", "write_reg_sel": "REG_IR"},
+            {"read_reg_sel1": "REG_SP", "write_reg_sel": "REG_ALE"},
             {"read_reg_sel1": "REG_ONE", "write_reg_sel": "REG_AHE"},
             {"mem_write_en": "true", "read_reg_sel1": "REG_PCH", "write_reg_sel": "REG_MEM"},
             {"alu_op": "ALU_OP_SUB", "write_en": "true", "read_reg_sel1": "REG_SP", "read_reg_sel2": "REG_ONE", "write_reg_sel": "REG_SP"},

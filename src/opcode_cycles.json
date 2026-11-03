@@ -1,5 +1,5 @@
 {
-    "00": {"id": "OP_BRK_IMP", "cycles": 21},
+    "00": {"id": "OP_BRK_IMP", "cycles": 24},
     "01": {"id": "OP_ORA_IND_X", "cycles": 12},
     "05": {"id": "OP_ORA_ZP", "cycles": 7},
     "06": {"id": "OP_ASL_ZP", "cycles": 8},

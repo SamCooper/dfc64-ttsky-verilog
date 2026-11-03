@@ -1,4 +1,6 @@
-// --- ADC: Add with Carry ---
+ `ifndef OPCODES
+   `define OPCODES 1
+ // --- ADC: Add with Carry ---
 parameter OP_ADC_IMM   = 8'h69;
 parameter OP_ADC_ZP    = 8'h65;
 parameter OP_ADC_ZP_X  = 8'h75;
@@ -214,3 +216,4 @@ parameter OP_TSX_IMP   = 8'hBA; // Transfer Stack Pointer to X
 parameter OP_TXA_IMP   = 8'h8A; // Transfer X to A
 parameter OP_TXS_IMP   = 8'h9A; // Transfer X to Stack Pointer
 parameter OP_TYA_IMP   = 8'h98; // Transfer Y to A
+`endif

@@ -40,14 +40,14 @@ pinout:
   ui[7]: ""
 
   # Outputs
-  uo[0]: "ALE_L"
-  uo[1]: "ALE_H"
-  uo[2]: "MEM_WE_n"
-  uo[3]: "MEM_OE_n"
-  uo[4]: "IO_CS0_n"
-  uo[5]: "IO_CS1_n"
-  uo[6]: "IO_CS2_n"
-  uo[7]: "IO_CS3_n"
+  uo[0]: "ALE_SET_n"
+  uo[1]: "AHE_SET_n"
+  uo[2]: "AI_SET"
+  uo[3]: "MEM_WE_n"
+  uo[4]: "MEM_OE_n"
+  uo[5]: "ZP_CLR_SET_n"
+  uo[6]: ""
+  uo[7]: ""
 
   # Bidirectional pins
   uio[0]: "AD0 (A0 / A8 / D0)"

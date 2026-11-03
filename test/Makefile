@@ -42,6 +42,7 @@ TOPLEVEL = tb
 
 # List test modules to run, separated by commas and without the .py suffix:
 #COCOTB_TEST_MODULES = test,test_bus,test_assembly
+#COCOTB_TEST_MODULES = test_interrupts
 COCOTB_TEST_MODULES = test_assembly
 
 # Keep Verilog ($display) and Python (print/logging) output in true order, even

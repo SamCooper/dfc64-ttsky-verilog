@@ -227,7 +227,7 @@ def gen_rom(ctx):
 def needs_extra_bytes(op):
     """Mirror of needs_zero/one/two_extra in the fragments: operand bytes to fetch."""
     bit = lambda n: (op >> n) & 1
-    zero = op in (0x00, 0x40, 0x60) or (bit(3), bit(2), bit(0)) == (1, 0, 0)
+    zero = op in (0x40, 0x60) or (bit(3), bit(2), bit(0)) == (1, 0, 0)
     two = op == 0x20 or ((op & 0xF) == 0x9 and bit(4)) or ((op >> 2) & 3) == 3
     return 0 if zero else (2 if two else 1)
 
