@@ -217,10 +217,10 @@ def gen_rom(ctx):
         if comment:
             if lines:
                 lines.append("")
-            lines.append(f"        // {comment}")
+            lines.append(f"            // {comment}")
         cells = [c + "," if i < len(cols) - 1 else c for i, c in enumerate(cols)]
         cells = [c.ljust(widths[i] + 1) if i < len(cols) - 1 else c for i, c in enumerate(cells)]
-        lines.append(f"        micro_rom[9'h{addr:03x}] = {{{' '.join(cells).rstrip()}}};")
+        lines.append(f"            9'h{addr:03x}: current_micro_word = {{{' '.join(cells).rstrip()}}};")
     return "\n".join(lines) + "\n"
 
 

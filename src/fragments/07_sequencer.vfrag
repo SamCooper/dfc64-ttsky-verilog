@@ -10,10 +10,7 @@
 
     // =========================================================================
     // 4. THE MICRO-SEQUENCER (Clocked)
-    // =========================================================================
-    // Read the current micro-word out of the ROM
-    wire [MICRO_ROM_WORD_SIZE-1:0] current_micro_word = micro_rom[micro_pc];
-    
+    // =========================================================================    
     // Extract the uJump command from the top 3 bits
     wire [2:0] uJump = current_micro_word[MICRO_ROM_WORD_SIZE-1:MICRO_ROM_WORD_SIZE-3];
 
@@ -22,6 +19,8 @@
             `ifdef SIM
                 $display("%0t Reset!", $realtime);
             `endif
+            is_irq <= 0;
+            is_nmi <= 0;
             micro_pc <= RESET_MICRO_PC; // On power-up, start at the Fetch Routine
         end else begin
             if (!nmi_n) begin
