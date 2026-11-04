@@ -1,0 +1,28 @@
+# DFC64: DIY Fabricated Computer 64
+
+## Project Architecture and Technical Choices
+
+<!-- include: sections/overview.md -->
+
+<!-- include: sections/toolchain.md -->
+---
+
+## Memory Architecture and Physical Layout
+
+<!-- include: sections/memory-map.md -->
+
+<!-- include: sections/pinout.md -->
+
+<!-- include: sections/external-ics.md -->
+
+---
+
+## Verification and Testing Strategy
+
+<!-- include: sections/verification.md -->
+
+---
+
+## Implementation and Submission Roadmap
+
+<!-- include: sections/roadmap.md -->

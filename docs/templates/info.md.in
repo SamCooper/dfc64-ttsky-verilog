@@ -1,0 +1,19 @@
+## How it works
+
+<!-- include: sections/overview.md -->
+
+<!-- include: sections/memory-map.md -->
+
+<!-- include: sections/pinout.md -->
+
+## How to test
+
+<!-- include: sections/how-to-test.md -->
+
+### Verification strategy
+
+<!-- include: sections/verification.md -->
+
+## External hardware
+
+<!-- include: sections/external-ics.md -->

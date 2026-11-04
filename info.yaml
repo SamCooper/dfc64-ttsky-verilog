@@ -40,12 +40,12 @@ pinout:
   ui[7]: ""
 
   # Outputs
-  uo[0]: "ALE_SET_n"
-  uo[1]: "AHE_SET_n"
-  uo[2]: "AI_SET"
+  uo[0]: "LOAD_L_n"
+  uo[1]: "LOAD_H_n"
+  uo[2]: "ADDR_INC"
   uo[3]: "MEM_WE_n"
   uo[4]: "MEM_OE_n"
-  uo[5]: "ZP_CLR_SET_n"
+  uo[5]: "ZP_CLR_n"
   uo[6]: ""
   uo[7]: ""
 

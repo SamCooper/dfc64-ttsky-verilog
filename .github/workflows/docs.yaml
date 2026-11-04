@@ -13,5 +13,8 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Check generated docs are up to date
+        run: python3 docs/build_docs.py --check
+
       - name: Build docs
         uses: TinyTapeout/tt-gds-action/docs@ttsky26d

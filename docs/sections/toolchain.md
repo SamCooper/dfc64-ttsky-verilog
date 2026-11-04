@@ -1,0 +1,8 @@
+**Core Toolchain and Design Decisions**
+*   **Design Entry (H. Neemann's Digital):** To balance visual schematic capture with hierarchical organization, the core logic and Finite State Machines (FSM) will be designed manually in *Digital*. This allows for drag-and-drop logic gate placement while automatically exporting standard, synthesizable Verilog for the ASIC toolchain.
+*   **Test-Driven Development (Claude Code):** Development will follow a strict BDD (Behavior-Driven Development) methodology. Claude Code will act as an automated test engineer, generating Python-based hardware mocks and test vectors based on plain-language specifications before the hardware is drawn.
+*   **Assembly Verification (vasm6502):** To verify the 6502 instruction set, standard assembly files will be compiled using `vasm`. The resulting binaries will be injected into the simulated ROM to verify full software execution against the hardware.
+*   **I/O Strategy (Time-Multiplexed Bus):** Because Tiny Tapeout provides limited I/O (8 bidirectional, 8 inputs, 8 outputs), the ASIC will output a multiplexed 16-bit address over two clock cycles using the bidirectional pins.
+*   **External PCB Decoding:** 
+    * The multiplexed signals will be captured by two external 8-bit latches. It is TBD on how this will be built currently as it will use an enhancement that allows the stored 16-bit address to increment in a single cycle.
+    * A 74HC138 3-to-8 line decoder on the PCB will manage the physical memory map, dividing the 64KB space into discrete blocks for System RAM, Video RAM (framebuffer), I/O peripherals, and ROM.
