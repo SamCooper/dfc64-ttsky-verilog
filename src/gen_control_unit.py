@@ -61,6 +61,7 @@ FIELDS = [
 ]
 UJUMP_WIDTH = 3      # the sequencer fragment slices the top 3 bits of the word
 FETCH_JUMP = "UJMP_FETCH"
+BREAK_JUMP = "UJMP_SET_BREAK"
 
 
 class GenError(Exception):
@@ -151,7 +152,7 @@ def check_stages(stages, label):
     """A routine ends in UJMP_FETCH and has no FETCH before its last stage."""
     for i, stage in enumerate(stages):
         last = i == len(stages) - 1
-        is_fetch = stage.get("uJump") == FETCH_JUMP
+        is_fetch = stage.get("uJump") == FETCH_JUMP or stage.get("uJump") == BREAK_JUMP
         if last and not is_fetch:
             raise GenError(f"{label}: last stage must have uJump {FETCH_JUMP}")
         if is_fetch and not last:

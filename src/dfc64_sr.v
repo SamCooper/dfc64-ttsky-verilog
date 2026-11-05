@@ -15,6 +15,8 @@ module dfc64_sr (
     input  wire        alu_negative_in, // From ALU
     input  wire        alu_overflow_in, // From ALU
     input  wire        alu_zero_in,     // From ALU
+    input  wire        is_irq,
+    input  wire        is_nmi,
     
     // Output
     output reg  [7:0] status_out
@@ -29,10 +31,10 @@ module dfc64_sr (
 
     always @ (posedge clk) begin
         if (!rst_n) begin
-            status_out <= 8'h0;
+            status_out <= 8'h24;
         end else begin
             status_out[5] <= 1;
-            status_out[FLAG_B] <= 1;
+            status_out[FLAG_B] <= !is_irq & !is_nmi;
 
             if (flags_opcode) begin
                 case (opcode_in)
@@ -42,7 +44,9 @@ module dfc64_sr (
                     OP_CLV_IMP: status_out[FLAG_V] <= 0;
                     OP_SEC_IMP: status_out[FLAG_C] <= 1;
                     OP_SED_IMP: status_out[FLAG_D] <= 1;
-                    OP_BRK_IMP,
+                    OP_BRK_IMP: begin
+                        status_out[FLAG_I] <= 1;
+                    end
                     OP_SEI_IMP: status_out[FLAG_I] <= 1;
                     OP_PLP_IMP,
                     OP_RTI_IMP: begin
@@ -51,7 +55,6 @@ module dfc64_sr (
                         `endif
                         status_out <= full_word_in;                
                         status_out[5] <= 1;
-                        status_out[4] <= 1;
                     end
                     default:;
                 endcase

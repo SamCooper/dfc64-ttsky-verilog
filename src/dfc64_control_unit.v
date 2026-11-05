@@ -3,11 +3,14 @@
 module dfc64_control_unit (
     input clk,     // clock
     input rst_n,   // reset_n - low to reset
+    input irq_mask,
     input irq_n,   // irq_n -   low to IRQ
     input nmi_n,   // nmi_n -   low to NMI
     input [7:0] ir,
     input [7:0]  mem_in,   // byte on the data bus (opcode being fetched)
 
+    output reg is_irq,
+    output reg is_nmi,
     output [3:0] alu_op,
     output       set_addr_c,
     output       flags_opcode,
@@ -33,10 +36,9 @@ module dfc64_control_unit (
     localparam UJMP_DISPATCH_1 = 3'b001; // micro_pc = opcode_mapper(opcode)
     localparam UJMP_DISPATCH_2 = 3'b010; // micro_pc = opcode_mapper(opcode)
     localparam UJMP_DISPATCH_3 = 3'b011; // micro_pc = opcode_mapper(opcode)
+    localparam UJMP_SET_BREAK  = 3'b100; // micro_pc = opcode_mapper(opcode)
     localparam UJMP_FETCH      = 3'b111; // micro_pc = 0x00 (Start over)
 
-    reg is_irq;
-    reg is_nmi;
     reg [8:0] micro_pc;
     reg [8:0] dispatch_address;
 
@@ -86,8 +88,6 @@ module dfc64_control_unit (
     localparam ALU_OP_BIT = 4'b1110;
 
     initial begin
-        is_irq = 0;
-        is_nmi = 0;
         micro_pc = 9'h0;
     end
 
@@ -109,764 +109,764 @@ module dfc64_control_unit (
             9'h00b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_PCH,  REG_ZERO, REG_AHE};
             9'h00c: current_micro_word = {UJMP_DISPATCH_3, ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_INC, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
 
+            // OP_BRK_IMP
+            9'h010: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_IR};
+            9'h011: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h012: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
+            9'h013: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_PCH,  REG_ZERO, REG_MEM};
+            9'h014: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h015: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h016: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_PCL,  REG_ZERO, REG_MEM};
+            9'h017: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h018: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h019: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_SR,   REG_ZERO, REG_MEM};
+            9'h01a: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h01b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h01c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_PCL,  REG_ZERO, REG_ALE};
+            9'h01d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_PCH,  REG_ZERO, REG_AHE};
+            9'h01e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+            9'h01f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h020: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h021: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h022: current_micro_word = {UJMP_SET_BREAK,  ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+
             // OP_JMP_ABS
-            9'h010: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h023: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_JMP_IND
-            9'h011: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h012: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h013: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-            9'h014: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h015: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h016: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h024: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h025: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h026: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+            9'h027: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h028: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h029: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_JSR_ABS
-            9'h017: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_DEC, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h018: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
-            9'h019: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_PCH,  REG_ZERO, REG_MEM};
-            9'h01a: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-            9'h01b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h01c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_PCL,  REG_ZERO, REG_MEM};
-            9'h01d: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-            9'h01e: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h02a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_DEC, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h02b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
+            9'h02c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_PCH,  REG_ZERO, REG_MEM};
+            9'h02d: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h02e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h02f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_PCL,  REG_ZERO, REG_MEM};
+            9'h030: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h031: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_RTS_IMP
-            9'h01f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-            9'h020: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h021: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
-            9'h022: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-            9'h023: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-            9'h024: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h025: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h026: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h027: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_INC, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h032: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h033: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h034: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
+            9'h035: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+            9'h036: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h037: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h038: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h039: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h03a: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_INC, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_RTI_IMP
-            9'h028: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-            9'h029: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h02a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
-            9'h02b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_SR};
-            9'h02c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-            9'h02d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h02e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-            9'h02f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-            9'h030: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h031: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h032: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h03b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h03c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h03d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
+            9'h03e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_SR};
+            9'h03f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h040: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h041: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+            9'h042: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h043: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h044: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h045: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_BCC_REL
-            9'h033: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h046: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_BCS_REL
-            9'h034: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h047: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_BEQ_REL
-            9'h035: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h048: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_BNE_REL
-            9'h036: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h049: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_BMI_REL
-            9'h037: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h04a: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_BPL_REL
-            9'h038: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h04b: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_BVC_REL
-            9'h039: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h04c: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_BVS_REL
-            9'h03a: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h04d: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_ADC_IMM
-            9'h03b: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
+            9'h04e: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
 
             // OP_ADC_ZP
-            9'h03c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h03d: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h04f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h050: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ADC_ZP_X
-            9'h03e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h03f: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h051: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h052: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ADC_ABS
-            9'h040: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h041: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h042: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h053: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h054: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h055: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ADC_ABS_X
-            9'h043: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h044: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h045: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h056: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h057: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h058: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ADC_ABS_Y
-            9'h046: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-            9'h047: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h048: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h059: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+            9'h05a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h05b: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ADC_IND_X
-            9'h049: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h04a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-            9'h04b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h04c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h04d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h04e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h04f: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h05c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h05d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+            9'h05e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h05f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h060: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h061: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h062: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ADC_IND_Y
-            9'h050: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h051: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-            9'h052: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h053: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h054: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h055: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h056: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h063: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h064: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+            9'h065: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h066: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h067: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h068: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h069: current_micro_word = {UJMP_FETCH,      ALU_OP_ADC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_SBC_IMM
-            9'h057: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
+            9'h06a: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
 
             // OP_SBC_ZP
-            9'h058: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h059: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h06b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h06c: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_SBC_ZP_X
-            9'h05a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h05b: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h06d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h06e: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_SBC_ABS
-            9'h05c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h05d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h05e: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h06f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h070: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h071: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_SBC_ABS_X
-            9'h05f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h060: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h061: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h072: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h073: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h074: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_SBC_ABS_Y
-            9'h062: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-            9'h063: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h064: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h075: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+            9'h076: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h077: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_SBC_IND_X
-            9'h065: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h066: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-            9'h067: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h068: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h069: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h06a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h06b: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h078: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h079: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+            9'h07a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h07b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h07c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h07d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h07e: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_SBC_IND_Y
-            9'h06c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h06d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-            9'h06e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h06f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h070: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h071: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h072: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h07f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h080: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+            9'h081: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h082: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h083: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h084: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h085: current_micro_word = {UJMP_FETCH,      ALU_OP_SBC, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_BIT_ABS
-            9'h073: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h074: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h075: current_micro_word = {UJMP_FETCH,      ALU_OP_BIT, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+            9'h086: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h087: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h088: current_micro_word = {UJMP_FETCH,      ALU_OP_BIT, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
             // OP_BIT_ZP
-            9'h076: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h077: current_micro_word = {UJMP_FETCH,      ALU_OP_BIT, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+            9'h089: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h08a: current_micro_word = {UJMP_FETCH,      ALU_OP_BIT, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
             // OP_AND_IMM
-            9'h078: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
+            9'h08b: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
 
             // OP_AND_ZP
-            9'h079: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h07a: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h08c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h08d: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_AND_ZP_X
-            9'h07b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h07c: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h08e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h08f: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_AND_ABS
-            9'h07d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h07e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h07f: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h090: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h091: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h092: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_AND_ABS_X
-            9'h080: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h081: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h082: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h093: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h094: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h095: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_AND_ABS_Y
-            9'h083: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-            9'h084: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h085: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h096: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+            9'h097: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h098: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_AND_IND_X
-            9'h086: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h087: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-            9'h088: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h089: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h08a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h08b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h08c: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h099: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h09a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+            9'h09b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h09c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h09d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h09e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h09f: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_AND_IND_Y
-            9'h08d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h08e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-            9'h08f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h090: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h091: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h092: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h093: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0a0: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0a1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+            9'h0a2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h0a3: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h0a4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0a5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0a6: current_micro_word = {UJMP_FETCH,      ALU_OP_AND, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_EOR_IMM
-            9'h094: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
+            9'h0a7: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
 
             // OP_EOR_ZP
-            9'h095: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h096: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0a8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0a9: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_EOR_ZP_X
-            9'h097: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h098: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0aa: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h0ab: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_EOR_ABS
-            9'h099: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h09a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h09b: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0ac: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0ad: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0ae: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_EOR_ABS_X
-            9'h09c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h09d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h09e: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0af: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h0b0: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0b1: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_EOR_ABS_Y
-            9'h09f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-            9'h0a0: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0a1: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0b2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+            9'h0b3: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0b4: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_EOR_IND_X
-            9'h0a2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h0a3: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-            9'h0a4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h0a5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h0a6: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0a7: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0a8: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0b5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h0b6: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+            9'h0b7: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h0b8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h0b9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0ba: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0bb: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_EOR_IND_Y
-            9'h0a9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0aa: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-            9'h0ab: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h0ac: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h0ad: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0ae: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0af: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0bc: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0bd: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+            9'h0be: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h0bf: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h0c0: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0c1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0c2: current_micro_word = {UJMP_FETCH,      ALU_OP_EOR, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ORA_IMM
-            9'h0b0: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
+            9'h0c3: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_A};
 
             // OP_ORA_ZP
-            9'h0b1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0b2: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0c4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0c5: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ORA_ZP_X
-            9'h0b3: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h0b4: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0c6: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h0c7: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ORA_ABS
-            9'h0b5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0b6: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0b7: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0c8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0c9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0ca: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ORA_ABS_X
-            9'h0b8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h0b9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0ba: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0cb: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h0cc: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0cd: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ORA_ABS_Y
-            9'h0bb: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-            9'h0bc: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0bd: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0ce: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+            9'h0cf: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0d0: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ORA_IND_X
-            9'h0be: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h0bf: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-            9'h0c0: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h0c1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h0c2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0c3: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0c4: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0d1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h0d2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+            9'h0d3: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h0d4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h0d5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0d6: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0d7: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_ORA_IND_Y
-            9'h0c5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0c6: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-            9'h0c7: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h0c8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h0c9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0ca: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0cb: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
+            9'h0d8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0d9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+            9'h0da: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h0db: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h0dc: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0dd: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0de: current_micro_word = {UJMP_FETCH,      ALU_OP_OR,  1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_A};
 
             // OP_DEX_IMP
-            9'h0cc: current_micro_word = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_ONE,  REG_X};
+            9'h0df: current_micro_word = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_ONE,  REG_X};
 
             // OP_DEY_IMP
-            9'h0cd: current_micro_word = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_Y,    REG_ONE,  REG_Y};
+            9'h0e0: current_micro_word = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_Y,    REG_ONE,  REG_Y};
 
             // OP_DEC_ZP
-            9'h0ce: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0cf: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-            9'h0d0: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
-
-            // OP_DEC_ZP_X
-            9'h0d1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h0d2: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-            9'h0d3: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
-
-            // OP_DEC_ABS
-            9'h0d4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0d5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0d6: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-            9'h0d7: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
-
-            // OP_DEC_ABS_X
-            9'h0d8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h0d9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0da: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-            9'h0db: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
-
-            // OP_INX_IMP
-            9'h0dc: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_ONE,  REG_X};
-
-            // OP_INY_IMP
-            9'h0dd: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_Y,    REG_ONE,  REG_Y};
-
-            // OP_INC_ZP
-            9'h0de: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0df: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-            9'h0e0: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
-
-            // OP_INC_ZP_X
-            9'h0e1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h0e2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h0e1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0e2: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
             9'h0e3: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_INC_ABS
-            9'h0e4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0e5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0e6: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-            9'h0e7: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+            // OP_DEC_ZP_X
+            9'h0e4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h0e5: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h0e6: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_INC_ABS_X
-            9'h0e8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h0e9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0ea: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-            9'h0eb: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+            // OP_DEC_ABS
+            9'h0e7: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0e8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0e9: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h0ea: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_ASL_ACC
-            9'h0ec: current_micro_word = {UJMP_FETCH,      ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
+            // OP_DEC_ABS_X
+            9'h0eb: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h0ec: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0ed: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h0ee: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_ASL_ZP
-            9'h0ed: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0ee: current_micro_word = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-            9'h0ef: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+            // OP_INX_IMP
+            9'h0ef: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_ONE,  REG_X};
 
-            // OP_ASL_ZP_X
-            9'h0f0: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h0f1: current_micro_word = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-            9'h0f2: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+            // OP_INY_IMP
+            9'h0f0: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_Y,    REG_ONE,  REG_Y};
 
-            // OP_ASL_ABS
-            9'h0f3: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0f4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0f5: current_micro_word = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            // OP_INC_ZP
+            9'h0f1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0f2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h0f3: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+
+            // OP_INC_ZP_X
+            9'h0f4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h0f5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
             9'h0f6: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_ASL_ABS_X
-            9'h0f7: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h0f8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h0f9: current_micro_word = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            // OP_INC_ABS
+            9'h0f7: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h0f8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0f9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
             9'h0fa: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_LSR_ACC
-            9'h0fb: current_micro_word = {UJMP_FETCH,      ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
-
-            // OP_LSR_ZP
-            9'h0fc: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h0fd: current_micro_word = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            // OP_INC_ABS_X
+            9'h0fb: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h0fc: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h0fd: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
             9'h0fe: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_LSR_ZP_X
-            9'h0ff: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h100: current_micro_word = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-            9'h101: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+            // OP_ASL_ACC
+            9'h0ff: current_micro_word = {UJMP_FETCH,      ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
 
-            // OP_LSR_ABS
-            9'h102: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h103: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h104: current_micro_word = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            // OP_ASL_ZP
+            9'h100: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h101: current_micro_word = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h102: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+
+            // OP_ASL_ZP_X
+            9'h103: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h104: current_micro_word = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
             9'h105: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_LSR_ABS_X
-            9'h106: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h107: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h108: current_micro_word = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            // OP_ASL_ABS
+            9'h106: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h107: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h108: current_micro_word = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
             9'h109: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_ROL_ACC
-            9'h10a: current_micro_word = {UJMP_FETCH,      ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
-
-            // OP_ROL_ZP
-            9'h10b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h10c: current_micro_word = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            // OP_ASL_ABS_X
+            9'h10a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h10b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h10c: current_micro_word = {UJMP_STEP,       ALU_OP_ASL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
             9'h10d: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_ROL_ZP_X
-            9'h10e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h10f: current_micro_word = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-            9'h110: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+            // OP_LSR_ACC
+            9'h10e: current_micro_word = {UJMP_FETCH,      ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
 
-            // OP_ROL_ABS
-            9'h111: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h112: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h113: current_micro_word = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            // OP_LSR_ZP
+            9'h10f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h110: current_micro_word = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h111: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+
+            // OP_LSR_ZP_X
+            9'h112: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h113: current_micro_word = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
             9'h114: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_ROL_ABS_X
-            9'h115: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h116: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h117: current_micro_word = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            // OP_LSR_ABS
+            9'h115: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h116: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h117: current_micro_word = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
             9'h118: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_ROR_ACC
-            9'h119: current_micro_word = {UJMP_FETCH,      ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
-
-            // OP_ROR_ZP
-            9'h11a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h11b: current_micro_word = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            // OP_LSR_ABS_X
+            9'h119: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h11a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h11b: current_micro_word = {UJMP_STEP,       ALU_OP_LSR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
             9'h11c: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_ROR_ZP_X
-            9'h11d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h11e: current_micro_word = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
-            9'h11f: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+            // OP_ROL_ACC
+            9'h11d: current_micro_word = {UJMP_FETCH,      ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
 
-            // OP_ROR_ABS
-            9'h120: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h121: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h122: current_micro_word = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            // OP_ROL_ZP
+            9'h11e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h11f: current_micro_word = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h120: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+
+            // OP_ROL_ZP_X
+            9'h121: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h122: current_micro_word = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
             9'h123: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
-            // OP_ROR_ABS_X
-            9'h124: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h125: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h126: current_micro_word = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            // OP_ROL_ABS
+            9'h124: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h125: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h126: current_micro_word = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
             9'h127: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
 
+            // OP_ROL_ABS_X
+            9'h128: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h129: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h12a: current_micro_word = {UJMP_STEP,       ALU_OP_ROL, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h12b: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+
+            // OP_ROR_ACC
+            9'h12c: current_micro_word = {UJMP_FETCH,      ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_A};
+
+            // OP_ROR_ZP
+            9'h12d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h12e: current_micro_word = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h12f: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+
+            // OP_ROR_ZP_X
+            9'h130: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h131: current_micro_word = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h132: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+
+            // OP_ROR_ABS
+            9'h133: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h134: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h135: current_micro_word = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h136: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+
+            // OP_ROR_ABS_X
+            9'h137: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h138: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h139: current_micro_word = {UJMP_STEP,       ALU_OP_ROR, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ONE,  REG_IR_L};
+            9'h13a: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_IR_L, REG_ZERO, REG_MEM};
+
             // OP_CMP_IMM
-            9'h128: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_ZERO};
+            9'h13b: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_IR_L, REG_ZERO};
 
             // OP_CMP_ZP
-            9'h129: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h12a: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+            9'h13c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h13d: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
             // OP_CMP_ZP_X
-            9'h12b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h12c: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+            9'h13e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h13f: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
             // OP_CMP_ABS
-            9'h12d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h12e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h12f: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+            9'h140: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h141: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h142: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
             // OP_CMP_ABS_X
-            9'h130: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h131: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h132: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+            9'h143: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h144: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h145: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
             // OP_CMP_ABS_Y
-            9'h133: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-            9'h134: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h135: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+            9'h146: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+            9'h147: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h148: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
 
             // OP_CMP_IND_X
-            9'h136: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h137: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-            9'h138: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h139: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h13a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h13b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h13c: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
-
-            // OP_CMP_IND_Y
-            9'h13d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h13e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-            9'h13f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h140: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h141: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h142: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h143: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
-
-            // OP_CPX_IMM
-            9'h144: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_IR_L, REG_ZERO};
-
-            // OP_CPX_ZP
-            9'h145: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h146: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_X,    REG_MEM,  REG_ZERO};
-
-            // OP_CPX_ABS
-            9'h147: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h148: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h149: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_X,    REG_MEM,  REG_ZERO};
-
-            // OP_CPY_IMM
-            9'h14a: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_Y,    REG_IR_L, REG_ZERO};
-
-            // OP_CPY_ZP
-            9'h14b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h14c: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_Y,    REG_MEM,  REG_ZERO};
-
-            // OP_CPY_ABS
+            9'h149: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h14a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+            9'h14b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h14c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
             9'h14d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
             9'h14e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h14f: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_Y,    REG_MEM,  REG_ZERO};
+            9'h14f: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+
+            // OP_CMP_IND_Y
+            9'h150: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h151: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+            9'h152: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h153: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h154: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h155: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h156: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_A,    REG_MEM,  REG_ZERO};
+
+            // OP_CPX_IMM
+            9'h157: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_IR_L, REG_ZERO};
+
+            // OP_CPX_ZP
+            9'h158: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h159: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_X,    REG_MEM,  REG_ZERO};
+
+            // OP_CPX_ABS
+            9'h15a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h15b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h15c: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_X,    REG_MEM,  REG_ZERO};
+
+            // OP_CPY_IMM
+            9'h15d: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_Y,    REG_IR_L, REG_ZERO};
+
+            // OP_CPY_ZP
+            9'h15e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h15f: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_Y,    REG_MEM,  REG_ZERO};
+
+            // OP_CPY_ABS
+            9'h160: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h161: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h162: current_micro_word = {UJMP_FETCH,      ALU_OP_CMP, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_Y,    REG_MEM,  REG_ZERO};
 
             // OP_LDA_IMM
-            9'h150: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_A};
+            9'h163: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_A};
 
             // OP_LDX_IMM
-            9'h151: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_X};
+            9'h164: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_X};
 
             // OP_LDY_IMM
-            9'h152: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_Y};
+            9'h165: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_Y};
 
             // OP_LDA_ZP
-            9'h153: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h154: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+            9'h166: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h167: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
 
             // OP_LDX_ZP
-            9'h155: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h156: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
+            9'h168: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h169: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
 
             // OP_LDY_ZP
-            9'h157: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h158: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
+            9'h16a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h16b: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
 
             // OP_LDA_ZP_X
-            9'h159: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h15a: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
-
-            // OP_LDX_ZP_Y
-            9'h15b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-            9'h15c: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
-
-            // OP_LDY_ZP_X
-            9'h15d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h15e: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
-
-            // OP_LDA_ABS
-            9'h15f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h160: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h161: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
-
-            // OP_LDX_ABS
-            9'h162: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h163: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h164: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
-
-            // OP_LDY_ABS
-            9'h165: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h166: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h167: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
-
-            // OP_LDA_ABS_X
-            9'h168: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h169: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h16a: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
-
-            // OP_LDA_ABS_Y
-            9'h16b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-            9'h16c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h16c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
             9'h16d: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
 
-            // OP_LDX_ABS_Y
-            9'h16e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-            9'h16f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h170: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
+            // OP_LDX_ZP_Y
+            9'h16e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+            9'h16f: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
 
-            // OP_LDY_ABS_X
-            9'h171: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h172: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h173: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
+            // OP_LDY_ZP_X
+            9'h170: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h171: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
 
-            // OP_LDA_IND_X
-            9'h174: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h175: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-            9'h176: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h177: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            // OP_LDA_ABS
+            9'h172: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h173: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h174: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+
+            // OP_LDX_ABS
+            9'h175: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h176: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h177: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
+
+            // OP_LDY_ABS
             9'h178: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
             9'h179: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h17a: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+            9'h17a: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
+
+            // OP_LDA_ABS_X
+            9'h17b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h17c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h17d: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+
+            // OP_LDA_ABS_Y
+            9'h17e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+            9'h17f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h180: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+
+            // OP_LDX_ABS_Y
+            9'h181: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+            9'h182: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h183: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_X};
+
+            // OP_LDY_ABS_X
+            9'h184: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h185: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h186: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_Y};
+
+            // OP_LDA_IND_X
+            9'h187: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h188: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+            9'h189: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h18a: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h18b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h18c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h18d: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
 
             // OP_LDA_IND_Y
-            9'h17b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h17c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-            9'h17d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h17e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h17f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h180: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h181: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+            9'h18e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h18f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+            9'h190: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h191: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h192: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h193: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h194: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
 
             // OP_CLC_IMP
-            9'h182: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h195: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_CLD_IMP
-            9'h183: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h196: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_CLI_IMP
-            9'h184: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h197: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_CLV_IMP
-            9'h185: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h198: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_SEC_IMP
-            9'h186: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h199: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_SED_IMP
-            9'h187: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h19a: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_SEI_IMP
-            9'h188: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h19b: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
 
             // OP_STA_ZP
-            9'h189: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h18a: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
-
-            // OP_STA_ZP_X
-            9'h18b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h18c: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
-
-            // OP_STX_ZP
-            9'h18d: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h18e: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_X,    REG_ZERO, REG_MEM};
-
-            // OP_STX_ZP_Y
-            9'h18f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-            9'h190: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_X,    REG_ZERO, REG_MEM};
-
-            // OP_STY_ZP
-            9'h191: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h192: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_Y,    REG_ZERO, REG_MEM};
-
-            // OP_STY_ZP_X
-            9'h193: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h194: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_Y,    REG_ZERO, REG_MEM};
-
-            // OP_STA_ABS
-            9'h195: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h196: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h197: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
-
-            // OP_STA_ABS_X
-            9'h198: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h199: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h19a: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
-
-            // OP_STA_ABS_Y
-            9'h19b: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
-            9'h19c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h19c: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
             9'h19d: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
 
-            // OP_STX_ABS
-            9'h19e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h19f: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h1a0: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_X,    REG_ZERO, REG_MEM};
+            // OP_STA_ZP_X
+            9'h19e: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h19f: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
 
-            // OP_STY_ABS
-            9'h1a1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h1a2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h1a3: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_Y,    REG_ZERO, REG_MEM};
+            // OP_STX_ZP
+            9'h1a0: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h1a1: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_X,    REG_ZERO, REG_MEM};
 
-            // OP_STA_IND_X
-            9'h1a4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
-            9'h1a5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-            9'h1a6: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h1a7: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            // OP_STX_ZP_Y
+            9'h1a2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+            9'h1a3: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_X,    REG_ZERO, REG_MEM};
+
+            // OP_STY_ZP
+            9'h1a4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h1a5: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_Y,    REG_ZERO, REG_MEM};
+
+            // OP_STY_ZP_X
+            9'h1a6: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h1a7: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_Y,    REG_ZERO, REG_MEM};
+
+            // OP_STA_ABS
             9'h1a8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
             9'h1a9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
             9'h1aa: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
 
+            // OP_STA_ABS_X
+            9'h1ab: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h1ac: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h1ad: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+
+            // OP_STA_ABS_Y
+            9'h1ae: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_Y,    REG_ALE};
+            9'h1af: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h1b0: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+
+            // OP_STX_ABS
+            9'h1b1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h1b2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h1b3: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_X,    REG_ZERO, REG_MEM};
+
+            // OP_STY_ABS
+            9'h1b4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h1b5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h1b6: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_Y,    REG_ZERO, REG_MEM};
+
+            // OP_STA_IND_X
+            9'h1b7: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_X,    REG_ALE};
+            9'h1b8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
+            9'h1b9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h1ba: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h1bb: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h1bc: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h1bd: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+
             // OP_STA_IND_Y
-            9'h1ab: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h1ac: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
-            9'h1ad: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h1ae: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h1af: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
-            9'h1b0: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
-            9'h1b1: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+            9'h1be: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h1bf: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_Y,    REG_IR_L};
+            9'h1c0: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b1, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h1c1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
+            9'h1c2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_L, REG_ZERO, REG_ALE};
+            9'h1c3: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_IR_H, REG_ZERO, REG_AHE};
+            9'h1c4: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
 
             // OP_PHA_IMP
-            9'h1b2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h1b3: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
-            9'h1b4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
-            9'h1b5: current_micro_word = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h1c5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h1c6: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
+            9'h1c7: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_A,    REG_ZERO, REG_MEM};
+            9'h1c8: current_micro_word = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
 
             // OP_PHP_IMP
-            9'h1b6: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h1b7: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
-            9'h1b8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_SR,   REG_ZERO, REG_MEM};
-            9'h1b9: current_micro_word = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-
-            // OP_PLA_IMP
-            9'h1ba: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-            9'h1bb: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h1bc: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
-            9'h1bd: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
-
-            // OP_PLP_IMP
-            9'h1be: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-            9'h1bf: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h1c0: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
-            9'h1c1: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_SR};
-
-            // OP_TAX_IMP
-            9'h1c2: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_X};
-
-            // OP_TAY_IMP
-            9'h1c3: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_Y};
-
-            // OP_TSX_IMP
-            9'h1c4: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_X};
-
-            // OP_TXA_IMP
-            9'h1c5: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_ZERO, REG_A};
-
-            // OP_TXS_IMP
-            9'h1c6: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_ZERO, REG_SP};
-
-            // OP_TYA_IMP
-            9'h1c7: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_Y,    REG_ZERO, REG_A};
-
-            // OP_BRK_IMP
-            9'h1c8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_IR};
             9'h1c9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
             9'h1ca: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
-            9'h1cb: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_PCH,  REG_ZERO, REG_MEM};
-            9'h1cc: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-            9'h1cd: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h1ce: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_PCL,  REG_ZERO, REG_MEM};
-            9'h1cf: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-            9'h1d0: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
-            9'h1d1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_SR,   REG_ZERO, REG_MEM};
-            9'h1d2: current_micro_word = {UJMP_STEP,       ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
-            9'h1d3: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h1d4: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_PCL,  REG_ZERO, REG_ALE};
-            9'h1d5: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_PCH,  REG_ZERO, REG_AHE};
-            9'h1d6: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_L};
-            9'h1d7: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h1d8: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_IR_H};
-            9'h1d9: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_BRN, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
-            9'h1da: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ZERO, REG_ZERO, REG_ZERO};
+            9'h1cb: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b1, REG_SR,   REG_ZERO, REG_MEM};
+            9'h1cc: current_micro_word = {UJMP_FETCH,      ALU_OP_SUB, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+
+            // OP_PLA_IMP
+            9'h1cd: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h1ce: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h1cf: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
+            9'h1d0: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_A};
+
+            // OP_PLP_IMP
+            9'h1d1: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ONE,  REG_SP};
+            9'h1d2: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_ALE};
+            9'h1d3: current_micro_word = {UJMP_STEP,       ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b0, 1'b0, REG_ONE,  REG_ZERO, REG_AHE};
+            9'h1d4: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b0, 1'b1, 1'b0, REG_MEM,  REG_ZERO, REG_SR};
+
+            // OP_TAX_IMP
+            9'h1d5: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_X};
+
+            // OP_TAY_IMP
+            9'h1d6: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_A,    REG_ZERO, REG_Y};
+
+            // OP_TSX_IMP
+            9'h1d7: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_SP,   REG_ZERO, REG_X};
+
+            // OP_TXA_IMP
+            9'h1d8: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_ZERO, REG_A};
+
+            // OP_TXS_IMP
+            9'h1d9: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_X,    REG_ZERO, REG_SP};
+
+            // OP_TYA_IMP
+            9'h1da: current_micro_word = {UJMP_FETCH,      ALU_OP_ADD, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, PC_OP_NOP, 1'b1, 1'b0, 1'b0, REG_Y,    REG_ZERO, REG_A};
  
             default: current_micro_word = 30'h0; 
         endcase
@@ -892,33 +892,33 @@ module dfc64_control_unit (
     always @(*) begin
         if (needs_zero_extra) begin
             case (op)
-                    OP_RTS_IMP: dispatch_address = 9'h01f;
-                    OP_RTI_IMP: dispatch_address = 9'h028;
-                    OP_DEX_IMP: dispatch_address = 9'h0cc;
-                    OP_DEY_IMP: dispatch_address = 9'h0cd;
-                    OP_INX_IMP: dispatch_address = 9'h0dc;
-                    OP_INY_IMP: dispatch_address = 9'h0dd;
-                    OP_ASL_ACC: dispatch_address = 9'h0ec;
-                    OP_LSR_ACC: dispatch_address = 9'h0fb;
-                    OP_ROL_ACC: dispatch_address = 9'h10a;
-                    OP_ROR_ACC: dispatch_address = 9'h119;
-                    OP_CLC_IMP: dispatch_address = 9'h182;
-                    OP_CLD_IMP: dispatch_address = 9'h183;
-                    OP_CLI_IMP: dispatch_address = 9'h184;
-                    OP_CLV_IMP: dispatch_address = 9'h185;
-                    OP_SEC_IMP: dispatch_address = 9'h186;
-                    OP_SED_IMP: dispatch_address = 9'h187;
-                    OP_SEI_IMP: dispatch_address = 9'h188;
-                    OP_PHA_IMP: dispatch_address = 9'h1b2;
-                    OP_PHP_IMP: dispatch_address = 9'h1b6;
-                    OP_PLA_IMP: dispatch_address = 9'h1ba;
-                    OP_PLP_IMP: dispatch_address = 9'h1be;
-                    OP_TAX_IMP: dispatch_address = 9'h1c2;
-                    OP_TAY_IMP: dispatch_address = 9'h1c3;
-                    OP_TSX_IMP: dispatch_address = 9'h1c4;
-                    OP_TXA_IMP: dispatch_address = 9'h1c5;
-                    OP_TXS_IMP: dispatch_address = 9'h1c6;
-                    OP_TYA_IMP: dispatch_address = 9'h1c7;
+                    OP_RTS_IMP: dispatch_address = 9'h032;
+                    OP_RTI_IMP: dispatch_address = 9'h03b;
+                    OP_DEX_IMP: dispatch_address = 9'h0df;
+                    OP_DEY_IMP: dispatch_address = 9'h0e0;
+                    OP_INX_IMP: dispatch_address = 9'h0ef;
+                    OP_INY_IMP: dispatch_address = 9'h0f0;
+                    OP_ASL_ACC: dispatch_address = 9'h0ff;
+                    OP_LSR_ACC: dispatch_address = 9'h10e;
+                    OP_ROL_ACC: dispatch_address = 9'h11d;
+                    OP_ROR_ACC: dispatch_address = 9'h12c;
+                    OP_CLC_IMP: dispatch_address = 9'h195;
+                    OP_CLD_IMP: dispatch_address = 9'h196;
+                    OP_CLI_IMP: dispatch_address = 9'h197;
+                    OP_CLV_IMP: dispatch_address = 9'h198;
+                    OP_SEC_IMP: dispatch_address = 9'h199;
+                    OP_SED_IMP: dispatch_address = 9'h19a;
+                    OP_SEI_IMP: dispatch_address = 9'h19b;
+                    OP_PHA_IMP: dispatch_address = 9'h1c5;
+                    OP_PHP_IMP: dispatch_address = 9'h1c9;
+                    OP_PLA_IMP: dispatch_address = 9'h1cd;
+                    OP_PLP_IMP: dispatch_address = 9'h1d1;
+                    OP_TAX_IMP: dispatch_address = 9'h1d5;
+                    OP_TAY_IMP: dispatch_address = 9'h1d6;
+                    OP_TSX_IMP: dispatch_address = 9'h1d7;
+                    OP_TXA_IMP: dispatch_address = 9'h1d8;
+                    OP_TXS_IMP: dispatch_address = 9'h1d9;
+                    OP_TYA_IMP: dispatch_address = 9'h1da;
 
                 // If unknown opcode, route to an error handler or back to fetch
                 default: begin
@@ -928,81 +928,81 @@ module dfc64_control_unit (
         end else begin
             if (needs_one_extra) begin
                 case (op)
-                    OP_BCC_REL:   dispatch_address = 9'h033;
-                    OP_BCS_REL:   dispatch_address = 9'h034;
-                    OP_BEQ_REL:   dispatch_address = 9'h035;
-                    OP_BNE_REL:   dispatch_address = 9'h036;
-                    OP_BMI_REL:   dispatch_address = 9'h037;
-                    OP_BPL_REL:   dispatch_address = 9'h038;
-                    OP_BVC_REL:   dispatch_address = 9'h039;
-                    OP_BVS_REL:   dispatch_address = 9'h03a;
-                    OP_ADC_IMM:   dispatch_address = 9'h03b;
-                    OP_ADC_ZP:    dispatch_address = 9'h03c;
-                    OP_ADC_ZP_X:  dispatch_address = 9'h03e;
-                    OP_ADC_IND_X: dispatch_address = 9'h049;
-                    OP_ADC_IND_Y: dispatch_address = 9'h050;
-                    OP_SBC_IMM:   dispatch_address = 9'h057;
-                    OP_SBC_ZP:    dispatch_address = 9'h058;
-                    OP_SBC_ZP_X:  dispatch_address = 9'h05a;
-                    OP_SBC_IND_X: dispatch_address = 9'h065;
-                    OP_SBC_IND_Y: dispatch_address = 9'h06c;
-                    OP_BIT_ZP:    dispatch_address = 9'h076;
-                    OP_AND_IMM:   dispatch_address = 9'h078;
-                    OP_AND_ZP:    dispatch_address = 9'h079;
-                    OP_AND_ZP_X:  dispatch_address = 9'h07b;
-                    OP_AND_IND_X: dispatch_address = 9'h086;
-                    OP_AND_IND_Y: dispatch_address = 9'h08d;
-                    OP_EOR_IMM:   dispatch_address = 9'h094;
-                    OP_EOR_ZP:    dispatch_address = 9'h095;
-                    OP_EOR_ZP_X:  dispatch_address = 9'h097;
-                    OP_EOR_IND_X: dispatch_address = 9'h0a2;
-                    OP_EOR_IND_Y: dispatch_address = 9'h0a9;
-                    OP_ORA_IMM:   dispatch_address = 9'h0b0;
-                    OP_ORA_ZP:    dispatch_address = 9'h0b1;
-                    OP_ORA_ZP_X:  dispatch_address = 9'h0b3;
-                    OP_ORA_IND_X: dispatch_address = 9'h0be;
-                    OP_ORA_IND_Y: dispatch_address = 9'h0c5;
-                    OP_DEC_ZP:    dispatch_address = 9'h0ce;
-                    OP_DEC_ZP_X:  dispatch_address = 9'h0d1;
-                    OP_INC_ZP:    dispatch_address = 9'h0de;
-                    OP_INC_ZP_X:  dispatch_address = 9'h0e1;
-                    OP_ASL_ZP:    dispatch_address = 9'h0ed;
-                    OP_ASL_ZP_X:  dispatch_address = 9'h0f0;
-                    OP_LSR_ZP:    dispatch_address = 9'h0fc;
-                    OP_LSR_ZP_X:  dispatch_address = 9'h0ff;
-                    OP_ROL_ZP:    dispatch_address = 9'h10b;
-                    OP_ROL_ZP_X:  dispatch_address = 9'h10e;
-                    OP_ROR_ZP:    dispatch_address = 9'h11a;
-                    OP_ROR_ZP_X:  dispatch_address = 9'h11d;
-                    OP_CMP_IMM:   dispatch_address = 9'h128;
-                    OP_CMP_ZP:    dispatch_address = 9'h129;
-                    OP_CMP_ZP_X:  dispatch_address = 9'h12b;
-                    OP_CMP_IND_X: dispatch_address = 9'h136;
-                    OP_CMP_IND_Y: dispatch_address = 9'h13d;
-                    OP_CPX_IMM:   dispatch_address = 9'h144;
-                    OP_CPX_ZP:    dispatch_address = 9'h145;
-                    OP_CPY_IMM:   dispatch_address = 9'h14a;
-                    OP_CPY_ZP:    dispatch_address = 9'h14b;
-                    OP_LDA_IMM:   dispatch_address = 9'h150;
-                    OP_LDX_IMM:   dispatch_address = 9'h151;
-                    OP_LDY_IMM:   dispatch_address = 9'h152;
-                    OP_LDA_ZP:    dispatch_address = 9'h153;
-                    OP_LDX_ZP:    dispatch_address = 9'h155;
-                    OP_LDY_ZP:    dispatch_address = 9'h157;
-                    OP_LDA_ZP_X:  dispatch_address = 9'h159;
-                    OP_LDX_ZP_Y:  dispatch_address = 9'h15b;
-                    OP_LDY_ZP_X:  dispatch_address = 9'h15d;
-                    OP_LDA_IND_X: dispatch_address = 9'h174;
-                    OP_LDA_IND_Y: dispatch_address = 9'h17b;
-                    OP_STA_ZP:    dispatch_address = 9'h189;
-                    OP_STA_ZP_X:  dispatch_address = 9'h18b;
-                    OP_STX_ZP:    dispatch_address = 9'h18d;
-                    OP_STX_ZP_Y:  dispatch_address = 9'h18f;
-                    OP_STY_ZP:    dispatch_address = 9'h191;
-                    OP_STY_ZP_X:  dispatch_address = 9'h193;
-                    OP_STA_IND_X: dispatch_address = 9'h1a4;
-                    OP_STA_IND_Y: dispatch_address = 9'h1ab;
-                    OP_BRK_IMP:   dispatch_address = 9'h1c8;
+                    OP_BRK_IMP:   dispatch_address = 9'h010;
+                    OP_BCC_REL:   dispatch_address = 9'h046;
+                    OP_BCS_REL:   dispatch_address = 9'h047;
+                    OP_BEQ_REL:   dispatch_address = 9'h048;
+                    OP_BNE_REL:   dispatch_address = 9'h049;
+                    OP_BMI_REL:   dispatch_address = 9'h04a;
+                    OP_BPL_REL:   dispatch_address = 9'h04b;
+                    OP_BVC_REL:   dispatch_address = 9'h04c;
+                    OP_BVS_REL:   dispatch_address = 9'h04d;
+                    OP_ADC_IMM:   dispatch_address = 9'h04e;
+                    OP_ADC_ZP:    dispatch_address = 9'h04f;
+                    OP_ADC_ZP_X:  dispatch_address = 9'h051;
+                    OP_ADC_IND_X: dispatch_address = 9'h05c;
+                    OP_ADC_IND_Y: dispatch_address = 9'h063;
+                    OP_SBC_IMM:   dispatch_address = 9'h06a;
+                    OP_SBC_ZP:    dispatch_address = 9'h06b;
+                    OP_SBC_ZP_X:  dispatch_address = 9'h06d;
+                    OP_SBC_IND_X: dispatch_address = 9'h078;
+                    OP_SBC_IND_Y: dispatch_address = 9'h07f;
+                    OP_BIT_ZP:    dispatch_address = 9'h089;
+                    OP_AND_IMM:   dispatch_address = 9'h08b;
+                    OP_AND_ZP:    dispatch_address = 9'h08c;
+                    OP_AND_ZP_X:  dispatch_address = 9'h08e;
+                    OP_AND_IND_X: dispatch_address = 9'h099;
+                    OP_AND_IND_Y: dispatch_address = 9'h0a0;
+                    OP_EOR_IMM:   dispatch_address = 9'h0a7;
+                    OP_EOR_ZP:    dispatch_address = 9'h0a8;
+                    OP_EOR_ZP_X:  dispatch_address = 9'h0aa;
+                    OP_EOR_IND_X: dispatch_address = 9'h0b5;
+                    OP_EOR_IND_Y: dispatch_address = 9'h0bc;
+                    OP_ORA_IMM:   dispatch_address = 9'h0c3;
+                    OP_ORA_ZP:    dispatch_address = 9'h0c4;
+                    OP_ORA_ZP_X:  dispatch_address = 9'h0c6;
+                    OP_ORA_IND_X: dispatch_address = 9'h0d1;
+                    OP_ORA_IND_Y: dispatch_address = 9'h0d8;
+                    OP_DEC_ZP:    dispatch_address = 9'h0e1;
+                    OP_DEC_ZP_X:  dispatch_address = 9'h0e4;
+                    OP_INC_ZP:    dispatch_address = 9'h0f1;
+                    OP_INC_ZP_X:  dispatch_address = 9'h0f4;
+                    OP_ASL_ZP:    dispatch_address = 9'h100;
+                    OP_ASL_ZP_X:  dispatch_address = 9'h103;
+                    OP_LSR_ZP:    dispatch_address = 9'h10f;
+                    OP_LSR_ZP_X:  dispatch_address = 9'h112;
+                    OP_ROL_ZP:    dispatch_address = 9'h11e;
+                    OP_ROL_ZP_X:  dispatch_address = 9'h121;
+                    OP_ROR_ZP:    dispatch_address = 9'h12d;
+                    OP_ROR_ZP_X:  dispatch_address = 9'h130;
+                    OP_CMP_IMM:   dispatch_address = 9'h13b;
+                    OP_CMP_ZP:    dispatch_address = 9'h13c;
+                    OP_CMP_ZP_X:  dispatch_address = 9'h13e;
+                    OP_CMP_IND_X: dispatch_address = 9'h149;
+                    OP_CMP_IND_Y: dispatch_address = 9'h150;
+                    OP_CPX_IMM:   dispatch_address = 9'h157;
+                    OP_CPX_ZP:    dispatch_address = 9'h158;
+                    OP_CPY_IMM:   dispatch_address = 9'h15d;
+                    OP_CPY_ZP:    dispatch_address = 9'h15e;
+                    OP_LDA_IMM:   dispatch_address = 9'h163;
+                    OP_LDX_IMM:   dispatch_address = 9'h164;
+                    OP_LDY_IMM:   dispatch_address = 9'h165;
+                    OP_LDA_ZP:    dispatch_address = 9'h166;
+                    OP_LDX_ZP:    dispatch_address = 9'h168;
+                    OP_LDY_ZP:    dispatch_address = 9'h16a;
+                    OP_LDA_ZP_X:  dispatch_address = 9'h16c;
+                    OP_LDX_ZP_Y:  dispatch_address = 9'h16e;
+                    OP_LDY_ZP_X:  dispatch_address = 9'h170;
+                    OP_LDA_IND_X: dispatch_address = 9'h187;
+                    OP_LDA_IND_Y: dispatch_address = 9'h18e;
+                    OP_STA_ZP:    dispatch_address = 9'h19c;
+                    OP_STA_ZP_X:  dispatch_address = 9'h19e;
+                    OP_STX_ZP:    dispatch_address = 9'h1a0;
+                    OP_STX_ZP_Y:  dispatch_address = 9'h1a2;
+                    OP_STY_ZP:    dispatch_address = 9'h1a4;
+                    OP_STY_ZP_X:  dispatch_address = 9'h1a6;
+                    OP_STA_IND_X: dispatch_address = 9'h1b7;
+                    OP_STA_IND_Y: dispatch_address = 9'h1be;
                     
                     // If unknown opcode, route to an error handler or back to fetch
                     default: begin
@@ -1011,54 +1011,54 @@ module dfc64_control_unit (
                 endcase
             end else begin
                 case (op)
-                    OP_JMP_ABS:   dispatch_address = 9'h010;
-                    OP_JMP_IND:   dispatch_address = 9'h011;
-                    OP_JSR_ABS:   dispatch_address = 9'h017;
-                    OP_ADC_ABS:   dispatch_address = 9'h040;
-                    OP_ADC_ABS_X: dispatch_address = 9'h043;
-                    OP_ADC_ABS_Y: dispatch_address = 9'h046;
-                    OP_SBC_ABS:   dispatch_address = 9'h05c;
-                    OP_SBC_ABS_X: dispatch_address = 9'h05f;
-                    OP_SBC_ABS_Y: dispatch_address = 9'h062;
-                    OP_BIT_ABS:   dispatch_address = 9'h073;
-                    OP_AND_ABS:   dispatch_address = 9'h07d;
-                    OP_AND_ABS_X: dispatch_address = 9'h080;
-                    OP_AND_ABS_Y: dispatch_address = 9'h083;
-                    OP_EOR_ABS:   dispatch_address = 9'h099;
-                    OP_EOR_ABS_X: dispatch_address = 9'h09c;
-                    OP_EOR_ABS_Y: dispatch_address = 9'h09f;
-                    OP_ORA_ABS:   dispatch_address = 9'h0b5;
-                    OP_ORA_ABS_X: dispatch_address = 9'h0b8;
-                    OP_ORA_ABS_Y: dispatch_address = 9'h0bb;
-                    OP_DEC_ABS:   dispatch_address = 9'h0d4;
-                    OP_DEC_ABS_X: dispatch_address = 9'h0d8;
-                    OP_INC_ABS:   dispatch_address = 9'h0e4;
-                    OP_INC_ABS_X: dispatch_address = 9'h0e8;
-                    OP_ASL_ABS:   dispatch_address = 9'h0f3;
-                    OP_ASL_ABS_X: dispatch_address = 9'h0f7;
-                    OP_LSR_ABS:   dispatch_address = 9'h102;
-                    OP_LSR_ABS_X: dispatch_address = 9'h106;
-                    OP_ROL_ABS:   dispatch_address = 9'h111;
-                    OP_ROL_ABS_X: dispatch_address = 9'h115;
-                    OP_ROR_ABS:   dispatch_address = 9'h120;
-                    OP_ROR_ABS_X: dispatch_address = 9'h124;
-                    OP_CMP_ABS:   dispatch_address = 9'h12d;
-                    OP_CMP_ABS_X: dispatch_address = 9'h130;
-                    OP_CMP_ABS_Y: dispatch_address = 9'h133;
-                    OP_CPX_ABS:   dispatch_address = 9'h147;
-                    OP_CPY_ABS:   dispatch_address = 9'h14d;
-                    OP_LDA_ABS:   dispatch_address = 9'h15f;
-                    OP_LDX_ABS:   dispatch_address = 9'h162;
-                    OP_LDY_ABS:   dispatch_address = 9'h165;
-                    OP_LDA_ABS_X: dispatch_address = 9'h168;
-                    OP_LDA_ABS_Y: dispatch_address = 9'h16b;
-                    OP_LDX_ABS_Y: dispatch_address = 9'h16e;
-                    OP_LDY_ABS_X: dispatch_address = 9'h171;
-                    OP_STA_ABS:   dispatch_address = 9'h195;
-                    OP_STA_ABS_X: dispatch_address = 9'h198;
-                    OP_STA_ABS_Y: dispatch_address = 9'h19b;
-                    OP_STX_ABS:   dispatch_address = 9'h19e;
-                    OP_STY_ABS:   dispatch_address = 9'h1a1;
+                    OP_JMP_ABS:   dispatch_address = 9'h023;
+                    OP_JMP_IND:   dispatch_address = 9'h024;
+                    OP_JSR_ABS:   dispatch_address = 9'h02a;
+                    OP_ADC_ABS:   dispatch_address = 9'h053;
+                    OP_ADC_ABS_X: dispatch_address = 9'h056;
+                    OP_ADC_ABS_Y: dispatch_address = 9'h059;
+                    OP_SBC_ABS:   dispatch_address = 9'h06f;
+                    OP_SBC_ABS_X: dispatch_address = 9'h072;
+                    OP_SBC_ABS_Y: dispatch_address = 9'h075;
+                    OP_BIT_ABS:   dispatch_address = 9'h086;
+                    OP_AND_ABS:   dispatch_address = 9'h090;
+                    OP_AND_ABS_X: dispatch_address = 9'h093;
+                    OP_AND_ABS_Y: dispatch_address = 9'h096;
+                    OP_EOR_ABS:   dispatch_address = 9'h0ac;
+                    OP_EOR_ABS_X: dispatch_address = 9'h0af;
+                    OP_EOR_ABS_Y: dispatch_address = 9'h0b2;
+                    OP_ORA_ABS:   dispatch_address = 9'h0c8;
+                    OP_ORA_ABS_X: dispatch_address = 9'h0cb;
+                    OP_ORA_ABS_Y: dispatch_address = 9'h0ce;
+                    OP_DEC_ABS:   dispatch_address = 9'h0e7;
+                    OP_DEC_ABS_X: dispatch_address = 9'h0eb;
+                    OP_INC_ABS:   dispatch_address = 9'h0f7;
+                    OP_INC_ABS_X: dispatch_address = 9'h0fb;
+                    OP_ASL_ABS:   dispatch_address = 9'h106;
+                    OP_ASL_ABS_X: dispatch_address = 9'h10a;
+                    OP_LSR_ABS:   dispatch_address = 9'h115;
+                    OP_LSR_ABS_X: dispatch_address = 9'h119;
+                    OP_ROL_ABS:   dispatch_address = 9'h124;
+                    OP_ROL_ABS_X: dispatch_address = 9'h128;
+                    OP_ROR_ABS:   dispatch_address = 9'h133;
+                    OP_ROR_ABS_X: dispatch_address = 9'h137;
+                    OP_CMP_ABS:   dispatch_address = 9'h140;
+                    OP_CMP_ABS_X: dispatch_address = 9'h143;
+                    OP_CMP_ABS_Y: dispatch_address = 9'h146;
+                    OP_CPX_ABS:   dispatch_address = 9'h15a;
+                    OP_CPY_ABS:   dispatch_address = 9'h160;
+                    OP_LDA_ABS:   dispatch_address = 9'h172;
+                    OP_LDX_ABS:   dispatch_address = 9'h175;
+                    OP_LDY_ABS:   dispatch_address = 9'h178;
+                    OP_LDA_ABS_X: dispatch_address = 9'h17b;
+                    OP_LDA_ABS_Y: dispatch_address = 9'h17e;
+                    OP_LDX_ABS_Y: dispatch_address = 9'h181;
+                    OP_LDY_ABS_X: dispatch_address = 9'h184;
+                    OP_STA_ABS:   dispatch_address = 9'h1a8;
+                    OP_STA_ABS_X: dispatch_address = 9'h1ab;
+                    OP_STA_ABS_Y: dispatch_address = 9'h1ae;
+                    OP_STX_ABS:   dispatch_address = 9'h1b1;
+                    OP_STY_ABS:   dispatch_address = 9'h1b4;
                     
                     // If unknown opcode, route to an error handler or back to fetch
                     default: begin
@@ -1075,31 +1075,49 @@ module dfc64_control_unit (
     // Extract the uJump command from the top 3 bits
     wire [2:0] uJump = current_micro_word[MICRO_ROM_WORD_SIZE-1:MICRO_ROM_WORD_SIZE-3];
 
+    reg irq_sync1;
+    reg irq_sync2;
+    wire irq_active = !irq_sync2;   // synchronised IRQ_n level, active high
+
+    reg  clear_nmi;
+    wire nmi_pending;
+
+    dfc64_interrupt_controller nmi_controller(
+        .clk(clk),
+        .rst_n(rst_n),
+        .irq_n(nmi_n),
+        .clear_irq(clear_nmi),
+        .irq_pending(nmi_pending)
+    );
+
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            irq_sync1 <= 1'b1;
+            irq_sync2 <= 1'b1;
+        end else begin
+            irq_sync1 <= irq_n;
+            irq_sync2 <= irq_sync1;
+        end
+    end
+
     always @(posedge clk) begin
         if (!rst_n) begin
             `ifdef SIM
                 $display("%0t Reset!", $realtime);
             `endif
-            is_irq <= 0;
-            is_nmi <= 0;
-            micro_pc <= RESET_MICRO_PC; // On power-up, start at the Fetch Routine
+            micro_pc  <= RESET_MICRO_PC; // On power-up, start at the Fetch Routine
+            is_irq    <= 1'b0;
+            is_nmi    <= 1'b0;
+            clear_nmi <= 1'b0;
         end else begin
-            if (!nmi_n) begin
-                `ifdef SIM
-                    $display("%0t NMI!", $realtime);
-                `endif
-                is_nmi <= 1;
-            end else if (!irq_n) begin
-                `ifdef SIM
-                    $display("%0t IRQ!", $realtime);
-                `endif
-                is_irq <= 1;
-            end
             `ifdef SIM
                 $display("%0t Stage: %b %b %h %h %h", $realtime, current_micro_word, uJump, micro_pc, op, dispatch_address);
             `endif
+            clear_nmi <= 1'b0;
             case (uJump)
-                UJMP_STEP:     micro_pc <= micro_pc + 1;
+                UJMP_STEP:       begin
+                    micro_pc <= micro_pc + 1;
+                end
                 UJMP_DISPATCH_1: begin
                     micro_pc <= (needs_zero_extra) ? dispatch_address : micro_pc + 1;
                 end
@@ -1109,16 +1127,30 @@ module dfc64_control_unit (
                 UJMP_DISPATCH_3: begin
                     micro_pc <= (needs_two_extra) ? dispatch_address : micro_pc + 1;
                 end
+                UJMP_SET_BREAK:  begin
+                    // End of the BRK / interrupt entry sequence
+                    micro_pc <= 9'h00;
+                    is_irq   <= 1'b0;
+                    is_nmi   <= 1'b0;
+                end
                 default:         begin
-                    if (is_nmi) begin
-                        micro_pc <= 9'h1c3;
-                    end else if (is_irq) begin
-                        micro_pc <= 9'h1c3;
+                    // UJMP_FETCH: instruction boundary, check for interrupts
+                    if (nmi_pending) begin
+                        `ifdef SIM
+                            $display("%0t NMI taken!", $realtime);
+                        `endif
+                        micro_pc  <= 9'h010;
+                        is_nmi    <= 1'b1;
+                        clear_nmi <= 1'b1;   // acknowledge: a new edge can latch again
+                    end else if (irq_active && !irq_mask) begin
+                        `ifdef SIM
+                            $display("%0t IRQ taken!", $realtime);
+                        `endif
+                        micro_pc <= 9'h010;
+                        is_irq   <= 1'b1;
                     end else begin
                         micro_pc <= 9'h00;
                     end
-                    is_irq <= 0;
-                    is_nmi <= 0;
                 end
             endcase
         end

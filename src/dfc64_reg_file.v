@@ -1,3 +1,4 @@
+`include "dfc64_opcodes.v"
 module dfc64_reg_file (
     input  wire        clk,
     input  wire        rst_n,

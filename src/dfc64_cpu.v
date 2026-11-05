@@ -18,6 +18,8 @@ module tt_um_samcooper_dfc64 (
 );
     wire irq_n;
     wire nmi_n;
+    wire is_irq;
+    wire is_nmi;
 
     wire ale_set;
     wire ahe_set;
@@ -73,6 +75,7 @@ module tt_um_samcooper_dfc64 (
       .sr_n(sr[7]),
       .sr_v(sr[6]),
       .sr_z(sr[1]),
+      .is_nmi(is_nmi),
       .brn_op(ir[4]),
       .jmp_op(ir[7:5]),
       .pc_input(ir[23:8]),
@@ -95,6 +98,8 @@ module tt_um_samcooper_dfc64 (
       .alu_negative_in(alu_negative), // From ALU
       .alu_overflow_in(alu_overflow), // From ALU
       .alu_zero_in(alu_zero),     // From ALU
+      .is_irq(is_irq),
+      .is_nmi(is_nmi),
 
       .status_out(sr)
     );
@@ -152,10 +157,14 @@ module tt_um_samcooper_dfc64 (
     dfc64_control_unit control_unit (
       .clk(clk),
       .rst_n(rst_n),
+      .irq_mask(sr[2]),
       .irq_n(irq_n),
       .nmi_n(nmi_n),
       .ir(ir[7:0]),
       .mem_in(uio_in),
+
+      .is_irq(is_irq),
+      .is_nmi(is_nmi),
 
       .alu_op(alu_op),
       .set_addr_c(set_addr_c),

@@ -4,10 +4,9 @@
     localparam UJMP_DISPATCH_1 = 3'b001; // micro_pc = opcode_mapper(opcode)
     localparam UJMP_DISPATCH_2 = 3'b010; // micro_pc = opcode_mapper(opcode)
     localparam UJMP_DISPATCH_3 = 3'b011; // micro_pc = opcode_mapper(opcode)
+    localparam UJMP_SET_BREAK  = 3'b100; // micro_pc = opcode_mapper(opcode)
     localparam UJMP_FETCH      = 3'b111; // micro_pc = 0x00 (Start over)
 
-    reg is_irq;
-    reg is_nmi;
     reg [8:0] micro_pc;
     reg [8:0] dispatch_address;
 
@@ -57,8 +56,6 @@
     localparam ALU_OP_BIT = 4'b1110;
 
     initial begin
-        is_irq = 0;
-        is_nmi = 0;
         micro_pc = 9'h0;
     end
 

@@ -6,6 +6,7 @@ module dfc64_program_counter (
     input             sr_n,
     input             sr_v,
     input             sr_z,
+    input             is_nmi,
     input             brn_op,
     input      [2:0]  jmp_op,
     input      [15:0] pc_input,
@@ -30,6 +31,7 @@ module dfc64_program_counter (
         endcase
     end
 
+    wire [15:0] jmp_vec = is_nmi ? 16'hFFFA : 16'hFFFE;
 
     always @ (posedge clk) begin
         if (!rst_n) begin
@@ -59,11 +61,11 @@ module dfc64_program_counter (
                         `endif
                         pc_output <= pc_output + b_mux;
                     end else begin
-                        if (jmp_op == 3'b000 && pc_output != 16'hFFFE) begin
+                        if (jmp_op == 3'b000 && pc_output != jmp_vec) begin
                             `ifdef SIM
                                 $display("%0t PC SET BRK! %h %h", $realtime, pc_output, pc_input);
                             `endif
-                            pc_output <= 16'hFFFE;
+                            pc_output <= jmp_vec;
                         end else begin
                             `ifdef SIM
                                 $display("%0t PC JMP to %h!", $realtime, pc_input);

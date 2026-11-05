@@ -14,31 +14,49 @@
     // Extract the uJump command from the top 3 bits
     wire [2:0] uJump = current_micro_word[MICRO_ROM_WORD_SIZE-1:MICRO_ROM_WORD_SIZE-3];
 
+    reg irq_sync1;
+    reg irq_sync2;
+    wire irq_active = !irq_sync2;   // synchronised IRQ_n level, active high
+
+    reg  clear_nmi;
+    wire nmi_pending;
+
+    dfc64_interrupt_controller nmi_controller(
+        .clk(clk),
+        .rst_n(rst_n),
+        .irq_n(nmi_n),
+        .clear_irq(clear_nmi),
+        .irq_pending(nmi_pending)
+    );
+
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            irq_sync1 <= 1'b1;
+            irq_sync2 <= 1'b1;
+        end else begin
+            irq_sync1 <= irq_n;
+            irq_sync2 <= irq_sync1;
+        end
+    end
+
     always @(posedge clk) begin
         if (!rst_n) begin
             `ifdef SIM
                 $display("%0t Reset!", $realtime);
             `endif
-            is_irq <= 0;
-            is_nmi <= 0;
-            micro_pc <= RESET_MICRO_PC; // On power-up, start at the Fetch Routine
+            micro_pc  <= RESET_MICRO_PC; // On power-up, start at the Fetch Routine
+            is_irq    <= 1'b0;
+            is_nmi    <= 1'b0;
+            clear_nmi <= 1'b0;
         end else begin
-            if (!nmi_n) begin
-                `ifdef SIM
-                    $display("%0t NMI!", $realtime);
-                `endif
-                is_nmi <= 1;
-            end else if (!irq_n) begin
-                `ifdef SIM
-                    $display("%0t IRQ!", $realtime);
-                `endif
-                is_irq <= 1;
-            end
             `ifdef SIM
                 $display("%0t Stage: %b %b %h %h %h", $realtime, current_micro_word, uJump, micro_pc, op, dispatch_address);
             `endif
+            clear_nmi <= 1'b0;
             case (uJump)
-                UJMP_STEP:     micro_pc <= micro_pc + 1;
+                UJMP_STEP:       begin
+                    micro_pc <= micro_pc + 1;
+                end
                 UJMP_DISPATCH_1: begin
                     micro_pc <= (needs_zero_extra) ? dispatch_address : micro_pc + 1;
                 end
@@ -48,16 +66,30 @@
                 UJMP_DISPATCH_3: begin
                     micro_pc <= (needs_two_extra) ? dispatch_address : micro_pc + 1;
                 end
+                UJMP_SET_BREAK:  begin
+                    // End of the BRK / interrupt entry sequence
+                    micro_pc <= 9'h00;
+                    is_irq   <= 1'b0;
+                    is_nmi   <= 1'b0;
+                end
                 default:         begin
-                    if (is_nmi) begin
-                        micro_pc <= 9'h1c3;
-                    end else if (is_irq) begin
-                        micro_pc <= 9'h1c3;
+                    // UJMP_FETCH: instruction boundary, check for interrupts
+                    if (nmi_pending) begin
+                        `ifdef SIM
+                            $display("%0t NMI taken!", $realtime);
+                        `endif
+                        micro_pc  <= 9'h010;
+                        is_nmi    <= 1'b1;
+                        clear_nmi <= 1'b1;   // acknowledge: a new edge can latch again
+                    end else if (irq_active && !irq_mask) begin
+                        `ifdef SIM
+                            $display("%0t IRQ taken!", $realtime);
+                        `endif
+                        micro_pc <= 9'h010;
+                        is_irq   <= 1'b1;
                     end else begin
                         micro_pc <= 9'h00;
                     end
-                    is_irq <= 0;
-                    is_nmi <= 0;
                 end
             endcase
         end
