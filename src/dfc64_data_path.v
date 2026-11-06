@@ -8,10 +8,10 @@ module dfc64_data_path (
 
     // bus IO wires
     input wire [7:0]  mem_in,
-    output reg [7:0]  mem_out,
+    output wire [7:0]  mem_out,
     output wire [7:0] mem_oe,     // IOs: Enable path (active high: 0=input, 1=output)
-    output reg ale_set,
-    output reg ahe_set,
+    output wire ale_set,
+    output wire ahe_set,
 
     // Addresses (Directly from the 32-bit Instruction word)
     input  wire [3:0]  read_reg1,

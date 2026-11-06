@@ -1,3 +1,4 @@
+`include "dfc64_interrupt_controller.v"
 `include "dfc64_opcodes.v"
 module dfc64_control_unit (
     input clk,     // clock

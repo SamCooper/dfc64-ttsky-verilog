@@ -47,7 +47,7 @@ module dfc64_alu (
 
     wire local_carry;
     wire [7:0] add_sub_result;
-    assign {local_carry, add_sub_result} = src_data1 + b_mux + add_cin;
+    assign {local_carry, add_sub_result} = src_data1 + b_mux + {7'b0, add_cin};
 
     always @(*) begin
         result_data = 8'b0;

@@ -1,3 +1,5 @@
+ `ifndef INT_CTRL
+   `define INT_CTRL 1
 module dfc64_interrupt_controller (
     input  clk,
     input  rst_n,
@@ -51,3 +53,4 @@ module dfc64_interrupt_controller (
     end
 
 endmodule
+`endif
