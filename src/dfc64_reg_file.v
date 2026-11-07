@@ -3,7 +3,8 @@ module dfc64_reg_file (
     input  wire        clk,
     input  wire        rst_n,
 
-    input  wire        we,         // Write Enable (from Control Unit)
+    input  wire        dec_sp,
+
     input  wire [3:0]  rs1,        // Read Address 1 
     input  wire [3:0]  rs2,        // Read Address 2 
     input  wire [3:0]  rd,         // Write Address 
@@ -24,14 +25,14 @@ module dfc64_reg_file (
 //    localparam REG_X     = 4'b0100;
 //    localparam REG_Y     = 4'b0101;
     localparam REG_SP    = 4'b0110;
-    localparam REG_SR    = 4'b0111;
     localparam REG_PCL   = 4'b1000;
     localparam REG_PCH   = 4'b1001;
 //    localparam REG_ALE   = 4'b1010;
 //    localparam REG_AHE   = 4'b1011;
-    localparam REG_MEM   = 4'b1100;
-    localparam REG_ZERO  = 4'b1101;
-    localparam REG_ONE   = 4'b1110;
+    localparam REG_SR    = 4'b1100;
+    localparam REG_MEM   = 4'b1101;
+    localparam REG_ZERO  = 4'b1110;
+    localparam REG_ONE   = 4'b1111;
 
     // The storage array: registers, each 8 bits wide
     reg [7:0] rf [0:6];
@@ -75,8 +76,10 @@ module dfc64_reg_file (
             rf[REG_SP[2:0]] <= 8'hFF;
         end
         else begin
-            // Only write if Write Enable is high AND we aren't trying to overwrite R0
-            if (rst_n && we && rd[3] == 0) begin
+            if (dec_sp) begin
+                rf[REG_SP[2:0]] <= rf[REG_SP[2:0]] - 1;
+            end
+            if (rst_n && rd[3] == 0) begin
                 `ifdef SIM
                     $display("%0t REG set %b %h!", $realtime, rd, wdata);
                 `endif

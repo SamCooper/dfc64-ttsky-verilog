@@ -11,3 +11,6 @@ module dfc64_control_unit (
 
     output reg is_irq,
     output reg is_nmi,
+    output mem_read_en,
+    output mem_write_en,
+

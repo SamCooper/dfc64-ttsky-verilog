@@ -51,10 +51,8 @@ FIELDS = [
     Field("flags_ctl_nz",    1, "false",      True),
     Field("al_inc",          1, "false",      True),
     Field("zp_clr_set",      1, "false",      True),
+    Field("dec_sp",          1, "false",      True),
     Field("pc_op",           2, "PC_OP_NOP",  True),
-    Field("write_en",        1, "false",      True),
-    Field("mem_read_en",     1, "false",      True),
-    Field("mem_write_en",    1, "false",      True),
     Field("read_reg_sel1",   4, "REG_ZERO",   True),
     Field("read_reg_sel2",   4, "REG_ZERO",   True),
     Field("write_reg_sel",   4, "REG_ZERO",   True),
@@ -68,7 +66,7 @@ class GenError(Exception):
     pass
 
 
-# --------------------------------------------------------------------------- inputs
+# ----------------------------------------------------read_reg_sel1 == REG_MEM----------------------- inputs
 
 def read_fragment(name):
     with open(os.path.join(FRAGMENT_DIR, name)) as f:
@@ -186,12 +184,12 @@ def gen_rom(ctx):
         if "addr" not in stage:
             raise GenError("fixed_stages.json: every stage needs an 'addr'")
         addr = int(stage["addr"], 0)
-        entries.append((addr, stage_columns(stage, symbols, f"fixed stage {stage['addr']}"),
+        entries.append((None, addr, stage_columns(stage, symbols, f"fixed stage {stage['addr']}"),
                         "fixed fetch/decode stage" if not entries else None))
 
-    addr = FIRST_OPCODE_ADDR
     seen = set()
     for op in load_json(OPCODE_STAGES_JSON)["opcodes"]:
+        addr = FIRST_OPCODE_ADDR
         name = op["id"]
         if name not in ctx["opcodes"]:
             raise GenError(f"opcode id {name!r} is not defined in dfc64_opcodes.v")
@@ -201,27 +199,24 @@ def gen_rom(ctx):
         check_stages(op["stages"], name)
         ctx["dispatch"].append((name, ctx["opcodes"][name], addr))
         for i, stage in enumerate(op["stages"]):
-            entries.append((addr, stage_columns(stage, symbols, f"{name} stage {i}"),
+            entries.append((name, addr, stage_columns(stage, symbols, f"{name} stage {i}"),
                             name if i == 0 else None))
             addr += 1
 
-    used = [a for a, _, _ in entries]
-    if len(set(used)) != len(used):
-        raise GenError("ROM address clash between fixed stages and opcode stages")
-    if max(used) >= ROM_SIZE:
-        raise GenError(f"microcode needs {max(used) + 1} ROM entries, only {ROM_SIZE} available")
-
     # Pad each column so the ROM reads as a table
-    widths = [max(len(cols[i]) for _, cols, _ in entries) for i in range(len(FIELDS))]
+    widths = [max(len(cols[i]) for _, _, cols, _ in entries) for i in range(len(FIELDS))]
     lines = []
-    for addr, cols, comment in entries:
+    for name, addr, cols, comment in entries:
         if comment:
             if lines:
                 lines.append("")
             lines.append(f"            // {comment}")
         cells = [c + "," if i < len(cols) - 1 else c for i, c in enumerate(cols)]
         cells = [c.ljust(widths[i] + 1) if i < len(cols) - 1 else c for i, c in enumerate(cells)]
-        lines.append(f"            9'h{addr:03x}: current_micro_word = {{{' '.join(cells).rstrip()}}};")
+        if name:
+            lines.append(f"            {{{name}, 4'b0}} + 12'h{addr:02x}: current_micro_word = {{{' '.join(cells).rstrip()}}};")
+        else:
+            lines.append(f"            12'h{addr:03x}: current_micro_word = {{{' '.join(cells).rstrip()}}};")
     return "\n".join(lines) + "\n"
 
 
@@ -265,11 +260,11 @@ SOURCES = [
     "03_params_b.vfrag",
     gen_rom,
     "04_mapper_a.vfrag",
-    gen_dispatch(0),
-    "05_mapper_b.vfrag",
-    gen_dispatch(1),
-    "06_mapper_c.vfrag",
-    gen_dispatch(2),
+    #gen_dispatch(0),
+    #"05_mapper_b.vfrag",
+    #gen_dispatch(1),
+    #"06_mapper_c.vfrag",
+    #gen_dispatch(2),
     "07_sequencer.vfrag",
     gen_assigns,
     "08_footer.vfrag",

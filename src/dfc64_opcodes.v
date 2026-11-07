@@ -139,7 +139,7 @@ parameter OP_LSR_ABS   = 8'h4E;
 parameter OP_LSR_ABS_X = 8'h5E;
 
 // --- NOP: No Operation ---
-//parameter OP_NOP_IMP   = 8'hEA;
+parameter OP_NOP_IMP   = 8'hEA;
 
 // --- ORA: Logical Inclusive OR ---
 parameter OP_ORA_IMM   = 8'h09;

@@ -3,8 +3,8 @@ module dfc64_data_path (
     input  wire        rst_n,
     
     // Control Signals (Decoded by the Control Unit)
-    input  wire        write_en,
     input  wire        mem_write,
+    input  wire        dec_sp,
 
     // bus IO wires
     input wire [7:0]  mem_in,
@@ -44,7 +44,7 @@ module dfc64_data_path (
     dfc64_reg_file regfile (
         .clk(clk),
         .rst_n(rst_n),
-        .we(write_en),
+        .dec_sp(dec_sp),
         .rs1(read_reg1),
         .rs2(read_reg2),
         .rd(write_reg),

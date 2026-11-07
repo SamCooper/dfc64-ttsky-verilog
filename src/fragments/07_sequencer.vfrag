@@ -1,12 +1,3 @@
-                    
-                    // If unknown opcode, route to an error handler or back to fetch
-                    default: begin
-                        dispatch_address = 9'h00; 
-                    end
-                endcase
-            end
-        end
-    end
 
     // =========================================================================
     // 4. THE MICRO-SEQUENCER (Clocked)
@@ -68,7 +59,7 @@
                 end
                 UJMP_SET_BREAK:  begin
                     // End of the BRK / interrupt entry sequence
-                    micro_pc <= 9'h00;
+                    micro_pc <= 12'h00;
                     is_irq   <= 1'b0;
                     is_nmi   <= 1'b0;
                 end
@@ -78,17 +69,17 @@
                         `ifdef SIM
                             $display("%0t NMI taken!", $realtime);
                         `endif
-                        micro_pc  <= 9'h010;
+                        micro_pc  <= 12'h010;
                         is_nmi    <= 1'b1;
                         clear_nmi <= 1'b1;   // acknowledge: a new edge can latch again
                     end else if (irq_active && !irq_mask) begin
                         `ifdef SIM
                             $display("%0t IRQ taken!", $realtime);
                         `endif
-                        micro_pc <= 9'h010;
+                        micro_pc <= 12'h010;
                         is_irq   <= 1'b1;
                     end else begin
-                        micro_pc <= 9'h00;
+                        micro_pc <= 12'h00;
                     end
                 end
             endcase

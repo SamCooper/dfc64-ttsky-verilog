@@ -247,7 +247,7 @@ Flags affected: `-`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $48 | implied | `PHA` | 1 | 3 | 7 | [pha.asm](test/asm_tests/pha.asm) / [pha.json](test/asm_tests/pha.json) |
+| [x] | $48 | implied | `PHA` | 1 | 3 | 6 | [pha.asm](test/asm_tests/pha.asm) / [pha.json](test/asm_tests/pha.json) |
 
 #### PHP: Push Processor Status on Stack
 
@@ -259,7 +259,7 @@ Flags affected: `-`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $08 | implied | `PHP` | 1 | 3 | 7 | [php.asm](test/asm_tests/php.asm) / [php.json](test/asm_tests/php.json) |
+| [x] | $08 | implied | `PHP` | 1 | 3 | 6 | [php.asm](test/asm_tests/php.asm) / [php.json](test/asm_tests/php.json) |
 
 #### PLA: Pull Accumulator from Stack
 
@@ -724,7 +724,7 @@ Flags affected: `-`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $20 | absolute | `JSR oper` | 3 | 6 | 15 | [jsr.asm](test/asm_tests/jsr.asm) / [jsr.json](test/asm_tests/jsr.json) |
+| [x] | $20 | absolute | `JSR oper` | 3 | 6 | 13 | [jsr.asm](test/asm_tests/jsr.asm) / [jsr.json](test/asm_tests/jsr.json) |
 
 #### RTS: Return from Subroutine
 
@@ -750,7 +750,7 @@ Flags affected: `I=1`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $00 | implied | `BRK` | 1 | 7 | 24 | [brk.asm](test/asm_tests/brk.asm) / [brk.json](test/asm_tests/brk.json) |
+| [x] | $00 | implied | `BRK` | 1 | 7 | 21 | [brk.asm](test/asm_tests/brk.asm) / [brk.json](test/asm_tests/brk.json) |
 
 #### RTI: Return from Interrupt
 
@@ -785,7 +785,7 @@ Flags affected: `-`
 
 | Done | Opcode | Mode | Syntax | Bytes | 6502 Cycles | DFC64 Cycles | Test Case |
 |:----:|:------:|------|--------|:-----:|:-----------:|:------------:|-------|
-| [x] | $EA | implied | `NOP` | 1 | 2 | | [nop.asm](test/asm_tests/nop.asm) / [nop.json](test/asm_tests/nop.json) |
+| [x] | $EA | implied | `NOP` | 1 | 2 | 4 | [nop.asm](test/asm_tests/nop.asm) / [nop.json](test/asm_tests/nop.json) |
 
 ## Opcode Matrix
 

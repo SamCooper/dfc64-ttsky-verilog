@@ -38,12 +38,12 @@ module tt_um_samcooper_dfc64 (
 
     wire [3:0] alu_op;
     wire set_addr_c;
+    wire dec_sp;
     wire [1:0] pc_op;
     wire flags_opcode;
     wire flags_ctl_c;
     wire flags_ctl_nz;
 
-    wire        write_en;
     wire [3:0]  read_reg_sel1;
     wire [3:0]  read_reg_sel2;
     wire [3:0]  write_reg_sel;
@@ -109,8 +109,8 @@ module tt_um_samcooper_dfc64 (
       .rst_n(rst_n),
 
       // Control Signals (Decoded by the Control Unit)
-      .write_en(write_en),
       .mem_write(mwe_set), 
+      .dec_sp(dec_sp),
 
       // bus IO wires
       .mem_in(uio_in),   // Data loaded from RAM
@@ -165,6 +165,8 @@ module tt_um_samcooper_dfc64 (
 
       .is_irq(is_irq),
       .is_nmi(is_nmi),
+      .mem_read_en(mre_set),
+      .mem_write_en(mwe_set),
 
       .alu_op(alu_op),
       .set_addr_c(set_addr_c),
@@ -173,11 +175,8 @@ module tt_um_samcooper_dfc64 (
       .flags_ctl_nz(flags_ctl_nz),
       .al_inc(ai_set),
       .zp_clr_set(zp_clr_set),
+      .dec_sp(dec_sp),
       .pc_op(pc_op),
-
-      .mem_write_en(mwe_set),
-      .mem_read_en(mre_set),
-      .write_en(write_en),
 
       .read_reg_sel1(read_reg_sel1),
       .read_reg_sel2(read_reg_sel2),

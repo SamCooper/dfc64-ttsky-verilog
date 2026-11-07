@@ -1,2 +1,3 @@
-
+    assign mem_read_en = (read_reg_sel1 == REG_MEM || read_reg_sel2 == REG_MEM) ? 1 : 0;
+    assign mem_write_en = write_reg_sel == REG_MEM ? 1 : 0;
 endmodule

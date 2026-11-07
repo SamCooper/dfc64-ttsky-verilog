@@ -1,12 +1,12 @@
  
-            default: current_micro_word = 30'h0; 
+            default: current_micro_word = 28'h0; 
         endcase
     end
    
     // =========================================================================
     // 3. THE OPCODE MAPPER (Combinational)
     // =========================================================================
-    wire [7:0] op = (micro_pc == 9'h02) ? mem_in : ir[7:0]; // Opcode being fetched (not yet in IR)
+    wire [7:0] op = (micro_pc == 12'h02) ? mem_in : ir[7:0]; // Opcode being fetched (not yet in IR)
     
    // 0 Extra Bytes: BRK/RTI/RTS, or ends in 8 or A
     wire needs_zero_extra = (op == 8'h40) || (op == 8'h60) || 
@@ -20,6 +20,4 @@
     // Default to 1 Extra Byte
     wire needs_one_extra = !(needs_two_extra || needs_zero_extra);
 
-    always @(*) begin
-        if (needs_zero_extra) begin
-            case (op)
+    assign dispatch_address = {op, 4'b0} + 12'h010;
